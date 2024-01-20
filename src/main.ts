@@ -4,7 +4,13 @@
 import { DfiCli } from "./cli.ts";
 import { Address, BlockHeight, TokenAmount } from "./common.ts";
 import { loadEnvOptions } from "./opts.ts";
-import { AccountToUtxosArgs, PoolSwapArgs, AddressMapKind, TransferDomainArgs, TransferDomainType } from "./req.ts";
+import {
+  AccountToUtxosArgs,
+  AddressMapKind,
+  PoolSwapArgs,
+  TransferDomainArgs,
+  TransferDomainType,
+} from "./req.ts";
 import { GetTokenBalancesResponseDecoded } from "./resp.ts";
 
 async function main() {
@@ -19,8 +25,8 @@ async function main() {
   console.log(envOpts);
   const { runIntervalMod, startBlock, endBlock } = envOpts;
   cli.addEachBlockEvent(async (height) => {
-    const forceStart = (() => { 
-      if (envOpts.forceStart === true ) {
+    const forceStart = (() => {
+      if (envOpts.forceStart === true) {
         envOpts.forceStart = false;
         return true;
       }
@@ -36,7 +42,10 @@ async function main() {
       };
 
       const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
-      if (forceStart || (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0)) {
+      if (
+        forceStart ||
+        (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0)
+      ) {
         // Run if we've either skipped in-between or during the mod period
         runEmissionSequence(cli, envOpts, height, diffBlocks);
         await updateState();
@@ -55,19 +64,28 @@ async function runEmissionSequence(
 ) {
   console.log(`runSequence: ${height.value} ${diffBlocks}`);
   const emissionsAddr = new Address(envOpts.emissionsAddr);
-  const emissionsAddrErc55 = new Address((await cli.addressMap(emissionsAddr, AddressMapKind.DvmToErc55)).format["erc55"]);
-  console.log(emissionsAddrErc55);
-  const maxDUSDSwapsPerBlock = 20;
-  const reservedUtxoForFees = 10;
+  const emissionsAddrErc55 = new Address(
+    (await cli.addressMap(emissionsAddr, AddressMapKind.DvmToErc55))
+      .format["erc55"],
+  );
+  console.log(
+    `addr: ${emissionsAddr.value}, erc55: ${emissionsAddrErc55.value}`,
+  );
+  const evmAddr1 = new Address(envOpts.evmAddr1);
+  const evmAddr2 = new Address(envOpts.evmAddr2);
+
+  const { maxDUSDPerBlock, utxoReserve, evmAddr1Share, evmAddr2Share } =
+    envOpts;
+
   let currentHeight = height;
 
   // Refill utxo from tokens if needed before we start anything
   const balanceInit = await cli.getBalance();
-  console.log(`initial balance: ${balanceInit}`);
-  if (balanceInit < reservedUtxoForFees) {
-    console.log(`refill utxo from account for: ${reservedUtxoForFees}`);
+  console.log(`init balance: ${balanceInit}`);
+  if (balanceInit < utxoReserve) {
+    console.log(`refill utxo from account for: ${utxoReserve}`);
     const tx = await cli.accountToUtxos(
-      new AccountToUtxosArgs(emissionsAddr, emissionsAddr, reservedUtxoForFees),
+      new AccountToUtxosArgs(emissionsAddr, emissionsAddr, utxoReserve),
     );
     await cli.waitForTx(tx);
     currentHeight = await cli.getBlockHeight();
@@ -85,7 +103,7 @@ async function runEmissionSequence(
 
   // Sanity checks
   let dfiTokenBalance = tokenBalances["DFI"];
-  if (dfiTokenBalance < reservedUtxoForFees) {
+  if (dfiTokenBalance < utxoReserve) {
     console.log(`DFI token balances too low. skipping`);
     return;
   }
@@ -99,7 +117,7 @@ async function runEmissionSequence(
 
   // DFI calculations
   const dfiPrice = Object.values(poolPairInfo)[0]["reserveB/reserveA"];
-  const cappedDFI = dfiPrice * maxDUSDSwapsPerBlock;
+  const cappedDFI = dfiPrice * maxDUSDPerBlock;
 
   dfiTokenBalance = tokenBalances["DFI"];
   const dfiToSwapPerBlock = Math.min(dfiTokenBalance, cappedDFI);
@@ -140,15 +158,22 @@ async function runEmissionSequence(
   }
 
   // TransferDomain to EVM of what we swapped to ERC55 address
-  tx = await cli.transferDomain(new TransferDomainArgs(emissionsAddr, 
-      TokenAmount.from(dUsdToTransfer, "DUSD"), 
-      emissionsAddrErc55, 
-      TransferDomainType.Dvm, 
-      TransferDomainType.Evm));
+  tx = await cli.transferDomain(
+    new TransferDomainArgs(
+      emissionsAddr,
+      TokenAmount.from(dUsdToTransfer, "DUSD"),
+      emissionsAddrErc55,
+      TransferDomainType.Dvm,
+      TransferDomainType.Evm,
+    ),
+  );
   currentHeight = await cli.waitForTx(tx);
 
   // EVMTx for distributing to EVM contract addresses
-  
+  const evmAddr1Amount = dUsdToTransfer * evmAddr1Share;
+  const evmAddr2Amount = dUsdToTransfer * evmAddr2Share;
+
+  // Move DUSD DST20 to the smart contracts
 }
 
 main();

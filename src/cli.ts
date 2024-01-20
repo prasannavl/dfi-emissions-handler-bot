@@ -15,7 +15,7 @@ import {
   TransferDomainArgs,
 } from "./req.ts";
 import {
-AddressMapResponse,
+  AddressMapResponse,
   GetBlockResponse,
   GetBlockResponseV0,
   GetBlockResponseV1,
@@ -216,7 +216,8 @@ export class DfiCli {
   async addressMap(addr: Address, type: AddressMapKind = AddressMapKind.Auto) {
     const res = await this.output(
       "addressmap",
-      addr.value, type.toString(),
+      addr.value,
+      type.toString(),
     );
     return res.json() as AddressMapResponse;
   }

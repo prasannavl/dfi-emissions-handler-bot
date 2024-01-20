@@ -163,6 +163,6 @@ export interface AddressMapResponse {
   input: string;
   type: AddressMapKind;
   format: {
-    [key: string] : string;
-  }
+    [key: string]: string;
+  };
 }
