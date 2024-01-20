@@ -1,4 +1,5 @@
 import { TokenAmount } from "./common.ts";
+import { AddressMapKind } from "./req.ts";
 
 export interface GetPoolPairResponse {
   [id: string]: {
@@ -156,4 +157,12 @@ export type GetTokenBalancesResponseArray = TokenAmount[];
 
 export interface GetTokenBalancesResponseDecoded {
   [key: string]: number;
+}
+
+export interface AddressMapResponse {
+  input: string;
+  type: AddressMapKind;
+  format: {
+    [key: string] : string;
+  }
 }

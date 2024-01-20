@@ -2,23 +2,31 @@
 /// <reference lib="deno.unstable" />
 
 import { DfiCli } from "./cli.ts";
-import { Address, BlockHeight } from "./common.ts";
-import { AccountToUtxosArgs, PoolSwapArgs } from "./req.ts";
+import { Address, BlockHeight, TokenAmount } from "./common.ts";
+import { loadEnvOptions } from "./opts.ts";
+import { AccountToUtxosArgs, PoolSwapArgs, AddressMapKind, TransferDomainArgs, TransferDomainType } from "./req.ts";
 import { GetTokenBalancesResponseDecoded } from "./resp.ts";
 
 async function main() {
   const cli = new DfiCli(null, "-testnet");
-  console.log(`DEFI_CLI: ${cli.path} ${cli.args.join(" ")}`);
-  const runIntervalMod = 2;
-  const startBlock = 1300000;
-  const endBlock = Number.MAX_VALUE;
-
+  console.log(`cli: ${cli.path} ${cli.args.join(" ")}`);
   const kv = await Deno.openKv(".state");
 
   let lastRunBlock = (await kv.get<number>(["lastRunBlock"]))?.value ?? 0;
   console.log(`lastRunBlock: ${lastRunBlock}`);
 
+  const envOpts = await loadEnvOptions();
+  console.log(envOpts);
+  const { runIntervalMod, startBlock, endBlock } = envOpts;
   cli.addEachBlockEvent(async (height) => {
+    const forceStart = (() => { 
+      if (envOpts.forceStart === true ) {
+        envOpts.forceStart = false;
+        return true;
+      }
+      return false;
+    })();
+
     if (height.value > startBlock && height.value < endBlock) {
       console.log("height", height);
 
@@ -27,12 +35,10 @@ async function main() {
         await kv.set(["lastRunBlock"], lastRunBlock);
       };
 
-      await runSequence(cli, height, 10);
-
       const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
-      if (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0) {
+      if (forceStart || (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0)) {
         // Run if we've either skipped in-between or during the mod period
-        runSequence(cli, height, diffBlocks);
+        runEmissionSequence(cli, envOpts, height, diffBlocks);
         await updateState();
       }
     }
@@ -41,13 +47,16 @@ async function main() {
   await cli.runBlockEventLoop();
 }
 
-async function runSequence(
+async function runEmissionSequence(
   cli: DfiCli,
+  envOpts: Awaited<ReturnType<typeof loadEnvOptions>>,
   height: BlockHeight,
   diffBlocks: number,
 ) {
   console.log(`runSequence: ${height.value} ${diffBlocks}`);
-  const emissionsAddr = new Address("tDFiEYXpRt5xKtRJzP2CDPQJwXkX3XoJz3");
+  const emissionsAddr = new Address(envOpts.emissionsAddr);
+  const emissionsAddrErc55 = new Address((await cli.addressMap(emissionsAddr, AddressMapKind.DvmToErc55)).format["erc55"]);
+  console.log(emissionsAddrErc55);
   const maxDUSDSwapsPerBlock = 20;
   const reservedUtxoForFees = 10;
   let currentHeight = height;
@@ -111,15 +120,35 @@ async function runSequence(
 
   // Swap DFI for DUSD
   console.log(`swap ${dfiToSwap} DFI for DUSD on ${currentHeight.value}}`);
-  const tx = await cli.poolSwap(
+  let tx = await cli.poolSwap(
     new PoolSwapArgs(emissionsAddr, "DFI", "DUSD", dfiToSwap),
   );
   const swapHeight = await cli.waitForTx(tx);
   currentHeight = await cli.getBlockHeight();
 
+  // Get DUSD balance after swap
+  const tokenBalancesAfterSwap = await cli.getTokenBalances(
+    true,
+    true,
+  ) as GetTokenBalancesResponseDecoded;
+  const dusdTokenBalance = tokenBalancesAfterSwap["DUSD"];
+  const dUsdToTransfer = dusdTokenBalance - dusdTokenBalanceStart;
+
+  if (dUsdToTransfer <= 0) {
+    console.log("no DUSD to transfer, skipping");
+    return;
+  }
+
   // TransferDomain to EVM of what we swapped to ERC55 address
+  tx = await cli.transferDomain(new TransferDomainArgs(emissionsAddr, 
+      TokenAmount.from(dUsdToTransfer, "DUSD"), 
+      emissionsAddrErc55, 
+      TransferDomainType.Dvm, 
+      TransferDomainType.Evm));
+  currentHeight = await cli.waitForTx(tx);
 
   // EVMTx for distributing to EVM contract addresses
+  
 }
 
 main();

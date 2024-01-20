@@ -6,6 +6,7 @@ import {
   TokenAmount,
   TxHash,
 } from "./common.ts";
+import { AddressMapKind } from "./req.ts";
 import {
   AccountToUtxosArgs,
   EvmTxArgs,
@@ -14,6 +15,7 @@ import {
   TransferDomainArgs,
 } from "./req.ts";
 import {
+AddressMapResponse,
   GetBlockResponse,
   GetBlockResponseV0,
   GetBlockResponseV1,
@@ -209,6 +211,14 @@ export class DfiCli {
       includeWatchOnly.toString(),
     );
     return res.json() as GetTransactionResponse;
+  }
+
+  async addressMap(addr: Address, type: AddressMapKind = AddressMapKind.Auto) {
+    const res = await this.output(
+      "addressmap",
+      addr.value, type.toString(),
+    );
+    return res.json() as AddressMapResponse;
   }
 
   async invalidateBlock(args: BlockHash) {

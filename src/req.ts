@@ -37,9 +37,11 @@ export class PoolSwapArgs {
   }
 }
 
-export enum TransferDomainKind {
-  DVM = 2,
-  EVM = 3,
+export enum TransferDomainType {
+  Auto = 0,
+  Utxo = 1,
+  Dvm = 2,
+  Evm = 3,
 }
 
 export class TransferDomainArgs {
@@ -47,8 +49,8 @@ export class TransferDomainArgs {
     public from: Address,
     public amount: TokenAmount,
     public to: Address,
-    public domainFrom: TransferDomainKind,
-    public domainTo: TransferDomainKind,
+    public domainFrom: TransferDomainType,
+    public domainTo: TransferDomainType,
   ) {
   }
 }
@@ -64,4 +66,10 @@ export class EvmTxArgs {
     public data: string,
   ) {
   }
+}
+
+export enum AddressMapKind {
+  Auto = 0,
+  DvmToErc55 = 1,
+  Erc55ToDvm = 2,
 }
