@@ -1,4 +1,4 @@
-import { Address, TokenAmount } from "./base.ts";
+import { Address, TokenAmount } from "./common.ts";
 
 export class SendToAddressArgs {
     constructor(public address: Address, public amount: number,

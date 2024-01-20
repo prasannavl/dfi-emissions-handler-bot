@@ -3,8 +3,8 @@
 /// <reference lib="deno.unstable" />
 
 import { DfiCli } from "./cli.ts";
-import { BlockHeight, Address } from "./types/base.ts";
-import { AccountToUtxosArgs } from "./types/req.ts";
+import { BlockHeight, Address } from "./common.ts";
+import { AccountToUtxosArgs } from "./req.ts";
 
 async function main() {
   const cli = new DfiCli(null, "-testnet");

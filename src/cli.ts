@@ -1,6 +1,6 @@
-import { BlockHeight, Address, TokenAmount, TxHash, BlockHash } from "./types/base.ts";
-import { PoolSwapArgs, SendToAddressArgs, AccountToUtxosArgs, EvmTxArgs, TransferDomainArgs } from "./types/req.ts";
-import { GetPoolPairResponse, GetBlockResponse, GetBlockResponseV0, GetBlockResponseV1, GetBlockResponseV2, GetTransactionResponse } from "./types/resp.ts";
+import { BlockHeight, Address, TokenAmount, TxHash, BlockHash } from "./common.ts";
+import { PoolSwapArgs, SendToAddressArgs, AccountToUtxosArgs, EvmTxArgs, TransferDomainArgs } from "./req.ts";
+import { GetPoolPairResponse, GetBlockResponse, GetBlockResponseV0, GetBlockResponseV1, GetBlockResponseV2, GetTransactionResponse } from "./resp.ts";
 
 export class DfiCli {
     public path: string;
