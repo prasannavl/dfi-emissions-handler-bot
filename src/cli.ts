@@ -19,6 +19,9 @@ import {
   GetBlockResponseV1,
   GetBlockResponseV2,
   GetPoolPairResponse,
+  GetTokenBalancesResponse,
+  GetTokenBalancesResponseArray,
+  GetTokenBalancesResponseDecoded,
   GetTransactionResponse,
 } from "./resp.ts";
 
@@ -89,7 +92,7 @@ export class DfiCli {
     let onEachBlockFuncs = this._onEachBlockFuncs;
     let height = await this.getBlockHeight();
     while (onEachBlockFuncs.length > 0) {
-      console.debug(`on each block event: ${height.value}`);
+      // console.debug(`on each block event: ${height.value}`);
       for (const func of onEachBlockFuncs) {
         try {
           await func(height);
@@ -125,10 +128,24 @@ export class DfiCli {
     return resNum;
   }
 
-  async getTokenBalances() {
-    const res = await this.output("gettokenbalances", "{}", "false", "true");
-    const resJson: string[] = res.json();
-    return resJson.map((x) => new TokenAmount(x));
+  async getTokenBalances(
+    decodeTokenStrings = true,
+    useTokenNames = true,
+  ): Promise<GetTokenBalancesResponse> {
+    const res = await this.output(
+      "gettokenbalances",
+      "{}",
+      decodeTokenStrings.toString(),
+      useTokenNames.toString(),
+    );
+    const resJson = res.json();
+    if (decodeTokenStrings) {
+      return resJson as GetTokenBalancesResponseDecoded;
+    } else {
+      return (resJson as string[]).map((x) =>
+        new TokenAmount(x)
+      ) as GetTokenBalancesResponseArray;
+    }
   }
 
   async getPoolPair(poolPairIdOrName: string) {

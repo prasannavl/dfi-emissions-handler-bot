@@ -2,23 +2,6 @@ export class ValueType<T> {
   constructor(public value: T) {}
 }
 
-export function flattenValues(args: any) {
-  if (args instanceof ValueType) {
-    return args.value;
-  }
-
-  const res: any = {};
-  for (const propName in args) {
-    const prop = args[propName];
-    if (prop instanceof ValueType) {
-      res[propName] = prop.value;
-    } else {
-      res[propName] = prop;
-    }
-  }
-  return res;
-}
-
 export class Address extends ValueType<string> {}
 export class BlockHeight extends ValueType<number> {}
 export class Hash extends ValueType<string> {}
@@ -67,4 +50,21 @@ export class TokenAmount extends ValueType<string> {
   toString() {
     return this.amount() + "@" + this.token();
   }
+}
+
+export function flattenValues(args: any) {
+  if (args instanceof ValueType) {
+    return args.value;
+  }
+
+  const res: any = {};
+  for (const propName in args) {
+    const prop = args[propName];
+    if (prop instanceof ValueType) {
+      res[propName] = prop.value;
+    } else {
+      res[propName] = prop;
+    }
+  }
+  return res;
 }

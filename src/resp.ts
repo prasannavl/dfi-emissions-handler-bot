@@ -1,3 +1,5 @@
+import { TokenAmount } from "./common.ts";
+
 export interface GetPoolPairResponse {
   [id: string]: {
     symbol: string;
@@ -144,4 +146,14 @@ export interface ScriptPubKeyResponse {
   reqSigs?: number;
   type: string;
   addresses?: string[];
+}
+
+export type GetTokenBalancesResponse =
+  | GetTokenBalancesResponseArray
+  | GetTokenBalancesResponseDecoded;
+
+export type GetTokenBalancesResponseArray = TokenAmount[];
+
+export interface GetTokenBalancesResponseDecoded {
+  [key: string]: number;
 }
