@@ -1,4 +1,7 @@
 import { load } from "std/dotenv/mod.ts";
+
+export type EnvOpts = Awaited<ReturnType<typeof loadEnvOptions>>;
+
 export async function loadEnvOptions() {
   class Option<T> {
     constructor(

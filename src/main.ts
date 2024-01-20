@@ -3,7 +3,7 @@
 
 import { DfiCli } from "./cli.ts";
 import { Address, BlockHeight, TokenAmount } from "./common.ts";
-import { loadEnvOptions } from "./opts.ts";
+import { EnvOpts, loadEnvOptions } from "./opts.ts";
 import {
   AccountToUtxosArgs,
   AddressMapKind,
@@ -24,14 +24,9 @@ async function main() {
   const envOpts = await loadEnvOptions();
   console.log(envOpts);
   const { runIntervalMod, startBlock, endBlock } = envOpts;
+
   cli.addEachBlockEvent(async (height) => {
-    const forceStart = (() => {
-      if (envOpts.forceStart === true) {
-        envOpts.forceStart = false;
-        return true;
-      }
-      return false;
-    })();
+    const forceStart = resolveForceStart(envOpts);
 
     if (height.value > startBlock && height.value < endBlock) {
       console.log("height", height);
@@ -58,29 +53,106 @@ async function main() {
 
 async function runEmissionSequence(
   cli: DfiCli,
-  envOpts: Awaited<ReturnType<typeof loadEnvOptions>>,
+  envOpts: EnvOpts,
   height: BlockHeight,
   diffBlocks: number,
 ) {
   console.log(`runSequence: ${height.value} ${diffBlocks}`);
+  const ctx = await createContext(cli, envOpts, height, diffBlocks);
+  console.log(ctx);
+
+  await ensureUtxoRefilled(cli, ctx);
+  if (!initialSanityChecks(cli, ctx)) {
+    return;
+  }
+  await swapDfiToDusd(cli, ctx);
+  await makePostSwapCalc(cli, ctx);
+  if (!(await transferDomainDusdToErc55(cli, ctx))) {
+    return;
+  }
+  if (!await distributeDusdToContracts(cli, ctx)) {
+    return;
+  }
+}
+
+function resolveForceStart(envOpts: EnvOpts) {
+  if (envOpts.forceStart === true) {
+    envOpts.forceStart = false;
+    return true;
+  }
+  return false;
+}
+
+async function createContext(
+  cli: DfiCli,
+  envOpts: EnvOpts,
+  height: BlockHeight,
+  diffBlocks: number,
+) {
+  const { maxDUSDPerBlock } = envOpts;
+
   const emissionsAddr = new Address(envOpts.emissionsAddr);
-  const emissionsAddrErc55 = new Address(
+  const emissionsAddrStrErc55 =
     (await cli.addressMap(emissionsAddr, AddressMapKind.DvmToErc55))
-      .format["erc55"],
-  );
-  console.log(
-    `addr: ${emissionsAddr.value}, erc55: ${emissionsAddrErc55.value}`,
-  );
-  const evmAddr1 = new Address(envOpts.evmAddr1);
-  const evmAddr2 = new Address(envOpts.evmAddr2);
+      .format["erc55"];
 
-  const { maxDUSDPerBlock, utxoReserve, evmAddr1Share, evmAddr2Share } =
-    envOpts;
-
-  let currentHeight = height;
-
-  // Refill utxo from tokens if needed before we start anything
   const balanceInit = await cli.getBalance();
+  const balanceTokensInit = await cli.getTokenBalances(
+    true,
+    true,
+  ) as GetTokenBalancesResponseDecoded;
+  const poolPairInfoDusdDfi = await cli.getPoolPair("DUSD-DFI");
+  const balanceTokensInitDfi = balanceTokensInit["DFI"];
+  const balanceTokensInitDusd = balanceTokensInit["DUSD"];
+
+  const dfiPriceForDusd =
+    Object.values(poolPairInfoDusdDfi)[0]["reserveB/reserveA"];
+  const dfiForDusdCappedPerBlock = dfiPriceForDusd * maxDUSDPerBlock;
+  const dfiToSwapPerBlock = Math.min(
+    balanceTokensInitDfi,
+    dfiForDusdCappedPerBlock,
+  );
+  const dfiToSwapForDiffBlocks = dfiToSwapPerBlock * diffBlocks;
+
+  return {
+    initHeight: height,
+    diffBlocks,
+    emissionsAddr,
+    emissionsAddrErc55: new Address(emissionsAddrStrErc55),
+    evmAddr1: new Address(envOpts.evmAddr1),
+    evmAddr2: new Address(envOpts.evmAddr2),
+    envOpts,
+    balanceInit,
+    balanceTokensInit,
+    balanceTokensInitDfi,
+    balanceTokensInitDusd,
+    poolPairInfoDusdDfi,
+    dfiPriceForDusd,
+    dfiForDusdCappedPerBlock,
+    dfiToSwapPerBlock,
+    dfiToSwapForDiffBlocks,
+    state: {
+      currentHeight: height,
+      balanceTokensDfi: balanceTokensInitDfi,
+      swapDfiToDusd: {
+        swapHeight: null as BlockHeight | null,
+      },
+      postSwapCalc: {
+        balanceTokens: null as GetTokenBalancesResponseDecoded | null,
+        balanceTokenDusd: null as number | null,
+        dUsdToTransfer: null as number | null,
+      },
+    },
+  };
+}
+
+async function ensureUtxoRefilled(
+  cli: DfiCli,
+  ctx: Awaited<ReturnType<typeof createContext>>,
+) {
+  // Refill utxo from tokens if needed before we start anything
+  const { envOpts: { utxoReserve }, state, balanceInit, emissionsAddr } = ctx;
+
   console.log(`init balance: ${balanceInit}`);
   if (balanceInit < utxoReserve) {
     console.log(`refill utxo from account for: ${utxoReserve}`);
@@ -88,77 +160,102 @@ async function runEmissionSequence(
       new AccountToUtxosArgs(emissionsAddr, emissionsAddr, utxoReserve),
     );
     await cli.waitForTx(tx);
-    currentHeight = await cli.getBlockHeight();
+    state.currentHeight = await cli.getBlockHeight();
+    state.balanceTokensDfi -= utxoReserve;
   }
+}
 
-  // We get all the info in one go to reduce the distance of non-atomic operations.
-  const balance = currentHeight.value === height.value
-    ? balanceInit
-    : await cli.getBalance();
-  const tokenBalances = await cli.getTokenBalances(
-    true,
-    true,
-  ) as GetTokenBalancesResponseDecoded;
-  const poolPairInfo = await cli.getPoolPair("DUSD-DFI");
-
+function initialSanityChecks(
+  cli: DfiCli,
+  ctx: Awaited<ReturnType<typeof createContext>>,
+) {
+  const {
+    envOpts: { utxoReserve },
+    balanceTokensInit,
+    dfiToSwapForDiffBlocks,
+  } = ctx;
   // Sanity checks
-  let dfiTokenBalance = tokenBalances["DFI"];
+  const dfiTokenBalance = balanceTokensInit["DFI"];
   if (dfiTokenBalance < utxoReserve) {
     console.log(`DFI token balances too low. skipping`);
-    return;
+    return false;
   }
-  const dusdTokenBalanceStart = tokenBalances["DUSD"] || 0;
+  const dusdTokenBalanceStart = balanceTokensInit["DUSD"] || 0;
   if (dusdTokenBalanceStart > 100) {
     console.log(
       `DUSD starting balance too high. skipping for manual verification`,
     );
-    return;
+    return false;
   }
 
-  // DFI calculations
-  const dfiPrice = Object.values(poolPairInfo)[0]["reserveB/reserveA"];
-  const cappedDFI = dfiPrice * maxDUSDPerBlock;
-
-  dfiTokenBalance = tokenBalances["DFI"];
-  const dfiToSwapPerBlock = Math.min(dfiTokenBalance, cappedDFI);
-  const dfiToSwap = dfiToSwapPerBlock * diffBlocks;
-
-  console.log(
-    `balances: UTXO: ${balance}, DFI: ${dfiTokenBalance}, DUSD: ${dusdTokenBalanceStart}`,
-  );
-  console.log(`prices: DFI / DUSD: ${dfiPrice}, per block cap: ${cappedDFI}`);
-  console.log(
-    `DFI to swap: per block: ${dfiToSwapPerBlock}, total: ${dfiToSwap}`,
-  );
-
-  if (dfiToSwap <= 0) {
-    console.log(`no DFI to swap on ${currentHeight.value}`);
-    return;
+  if (dfiToSwapForDiffBlocks <= 0) {
+    console.log(`no DFI to swap`);
+    return false;
   }
+  return true;
+}
 
-  // Swap DFI for DUSD
-  console.log(`swap ${dfiToSwap} DFI for DUSD on ${currentHeight.value}}`);
-  let tx = await cli.poolSwap(
-    new PoolSwapArgs(emissionsAddr, "DFI", "DUSD", dfiToSwap),
+async function swapDfiToDusd(
+  cli: DfiCli,
+  ctx: Awaited<ReturnType<typeof createContext>>,
+) {
+  // Refill utxo from tokens if needed before we start anything
+  const {
+    emissionsAddr,
+    dfiToSwapForDiffBlocks,
+    state,
+  } = ctx;
+  const ss = state.swapDfiToDusd;
+
+  console.log(
+    `swap: ${dfiToSwapForDiffBlocks} DFI to DUSD // ${state.currentHeight.value}}`,
   );
-  const swapHeight = await cli.waitForTx(tx);
-  currentHeight = await cli.getBlockHeight();
 
+  const tx = await cli.poolSwap(
+    new PoolSwapArgs(emissionsAddr, "DFI", "DUSD", dfiToSwapForDiffBlocks),
+  );
+  ss.swapHeight = await cli.waitForTx(tx);
+  state.currentHeight = await cli.getBlockHeight();
+}
+
+async function makePostSwapCalc(
+  cli: DfiCli,
+  ctx: Awaited<ReturnType<typeof createContext>>,
+) {
   // Get DUSD balance after swap
+  const { balanceTokensInitDusd, state } = ctx;
+  const ss = state.postSwapCalc;
+
   const tokenBalancesAfterSwap = await cli.getTokenBalances(
     true,
     true,
   ) as GetTokenBalancesResponseDecoded;
-  const dusdTokenBalance = tokenBalancesAfterSwap["DUSD"];
-  const dUsdToTransfer = dusdTokenBalance - dusdTokenBalanceStart;
 
-  if (dUsdToTransfer <= 0) {
+  const dusdTokenBalance = tokenBalancesAfterSwap["DUSD"];
+  const dUsdToTransfer = dusdTokenBalance - balanceTokensInitDusd;
+
+  ss.balanceTokens = tokenBalancesAfterSwap;
+  ss.balanceTokenDusd = dusdTokenBalance;
+  ss.dUsdToTransfer = dUsdToTransfer;
+}
+
+async function transferDomainDusdToErc55(
+  cli: DfiCli,
+  ctx: Awaited<ReturnType<typeof createContext>>,
+) {
+  // TransferDomain to EVM of what we swapped to ERC55 address
+  const {
+    emissionsAddr,
+    emissionsAddrErc55,
+    state: { postSwapCalc: { dUsdToTransfer } },
+    state,
+  } = ctx;
+  if (!dUsdToTransfer || dUsdToTransfer <= 0) {
     console.log("no DUSD to transfer, skipping");
-    return;
+    return false;
   }
 
-  // TransferDomain to EVM of what we swapped to ERC55 address
-  tx = await cli.transferDomain(
+  const tx = await cli.transferDomain(
     new TransferDomainArgs(
       emissionsAddr,
       TokenAmount.from(dUsdToTransfer, "DUSD"),
@@ -167,13 +264,32 @@ async function runEmissionSequence(
       TransferDomainType.Evm,
     ),
   );
-  currentHeight = await cli.waitForTx(tx);
 
-  // EVMTx for distributing to EVM contract addresses
+  state.currentHeight = await cli.waitForTx(tx);
+  return true;
+}
+
+async function distributeDusdToContracts(
+  cli: DfiCli,
+  ctx: Awaited<ReturnType<typeof createContext>>,
+) {
+  const { evmAddr1, evmAddr2, evmAddr1Share, evmAddr2Share } = ctx.envOpts;
+  const { dUsdToTransfer } = ctx.state.postSwapCalc;
+
+  if (!dUsdToTransfer || dUsdToTransfer <= 0) {
+    // TODO(later): Change the checks to be done in EVM land instead and not use postSwapCalc
+    // state at all, and instead extract from EVM land.
+    console.log("no DUSD to transfer, skipping");
+    return false;
+  }
+
+  // Build EVMTx for distributing to EVM contract addresses
   const evmAddr1Amount = dUsdToTransfer * evmAddr1Share;
   const evmAddr2Amount = dUsdToTransfer * evmAddr2Share;
 
   // Move DUSD DST20 to the smart contracts
+
+  return true;
 }
 
 main();
