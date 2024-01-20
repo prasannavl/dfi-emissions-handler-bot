@@ -1,9 +1,10 @@
 {
   "tasks": {
-    "dev": "deno run --allow-env --allow-run --allow-net --watch main.ts"
+    "dev": "deno run --unstable-kv -A --watch main.ts"
   },
   "imports": {
     "std/": "https://deno.land/std@0.212.0/",
     "x/": "https://deno.land/x/"
-  }
+  },
+  "unstable": ["kv"]
 }
