@@ -108,6 +108,12 @@ class DfiCli {
         return resJson.map(x => new TokenAmount(x));
     }
 
+    async getPoolPair(poolPairIdOrName: string) {
+      const res = await this.output("getpoolpair", poolPairIdOrName);
+      const resJson = res.json();
+      return resJson as GetPoolPairResponse;
+    }
+
     async poolSwap(args: PoolSwapArgs) {
         const res = await this.outputString("poolswap",
             JSON.stringify(flattenValues(args)));
@@ -133,7 +139,7 @@ class DfiCli {
     }
 
     async invalidateBlock(args: TxHash) {
-        const res = await this.outputString("invalidateblock",
+        await this.outputString("invalidateblock",
             args.value.toString());
         return;
     }
@@ -294,6 +300,32 @@ class PoolSwapArgs {
     }
 }
 
+interface GetPoolPairResponse {
+   [id: string]: {
+      symbol:              string;
+      name:                string;
+      status:              boolean;
+      idTokenA:            string;
+      idTokenB:            string;
+      dexFeePctTokenA:     number;
+      dexFeeInPctTokenA:   number;
+      reserveA:            number;
+      reserveB:            number;
+      commission:          number;
+      totalLiquidity:      number;
+      "reserveA/reserveB": number;
+      "reserveB/reserveA": number;
+      tradeEnabled:        boolean;
+      ownerAddress:        string;
+      blockCommissionA:    number;
+      blockCommissionB:    number;
+      rewardPct:           number;
+      rewardLoanPct:       number;
+      creationTx:          string;
+      creationHeight:      number;
+  }
+}
+
 enum TransferDomainKind {
   DVM = 2,
   EVM = 3
@@ -318,6 +350,7 @@ async function main() {
         console.log('height', height)
 
         await cli.waitForBlock();
+
     }
 }
 
