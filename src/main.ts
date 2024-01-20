@@ -3,7 +3,7 @@
 /// <reference lib="deno.unstable" />
 
 import { DfiCli } from "./cli.ts";
-import { BlockHeight, Address } from "./common.ts";
+import { Address, BlockHeight } from "./common.ts";
 import { AccountToUtxosArgs } from "./req.ts";
 
 async function main() {
@@ -20,16 +20,16 @@ async function main() {
 
   cli.addEachBlockEvent(async (height) => {
     if (height.value > startBlock && height.value < endBlock) {
-      console.log('height', height);
+      console.log("height", height);
 
       const updateState = async () => {
         lastRunBlock = height.value;
         await kv.set(["lastRunBlock"], lastRunBlock);
       };
 
-      const diffBlocks = (height.value - (Math.max(lastRunBlock, startBlock)));
+      const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
       if (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0) {
-        // Run if we've either skipped in-between or during the mod period 
+        // Run if we've either skipped in-between or during the mod period
         runSequence(cli, height, diffBlocks);
         await updateState();
       }
@@ -39,8 +39,11 @@ async function main() {
   await cli.runBlockEventLoop();
 }
 
-
-async function runSequence(cli: DfiCli, height: BlockHeight, diffBlocks: number) {
+async function runSequence(
+  cli: DfiCli,
+  height: BlockHeight,
+  diffBlocks: number,
+) {
   console.log(`runSequence: ${height.value} ${diffBlocks}`);
   const emissionsAddr = new Address("tDFiEYXpRt5xKtRJzP2CDPQJwXkX3XoJz3");
   const maxDUSDCapPerBlock = 20;
@@ -51,7 +54,9 @@ async function runSequence(cli: DfiCli, height: BlockHeight, diffBlocks: number)
   const balance = await cli.getBalance();
   if (balance < reservedUtxoForFees) {
     console.log(`Refilling balance: current: ${balance}`);
-    const tx = await cli.accountToUtxos(new AccountToUtxosArgs(emissionsAddr, emissionsAddr, reservedUtxoForFees));
+    const tx = await cli.accountToUtxos(
+      new AccountToUtxosArgs(emissionsAddr, emissionsAddr, reservedUtxoForFees),
+    );
     await cli.waitForTx(tx);
   }
 }

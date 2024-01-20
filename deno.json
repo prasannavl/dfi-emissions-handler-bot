@@ -2,7 +2,8 @@
   "tasks": {
     "run": "deno run --unstable-kv -A src/main.ts",
     "dev": "deno run --unstable-kv -A --watch src/main.ts",
-    "build": "deno compile --unstable-kv -A src/main.ts"
+    "build": "deno compile --unstable-kv -A src/main.ts",
+    "fmt": "deno fmt"
   },
   "imports": {
     "std/": "https://deno.land/std@0.212.0/",
