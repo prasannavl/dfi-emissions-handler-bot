@@ -138,12 +138,35 @@ class DfiCli {
         return;
     }
 
-    async sendToAddress(address: Address, amount: number,
-        comment = "", commentTo = "", subtractFeeFromAmount = false) {
-        const res = await this.outputString("sendtoaddress", address.value,
-            amount.toString(), comment, commentTo, subtractFeeFromAmount.toString());
+    async sendToAddress(args: SendToAddressArgs) {
+        const res = await this.outputString("sendtoaddress", args.address.value,
+            args.amount.toString(), args.comment, args.commentTo, args.subtractFeeFromAmount.toString());
         return new TxHash(trimConsoleText(res));
     }
+
+    async accountToUtxos(args: AccountToUtxosArgs) {
+      const res = await this.outputString("accounttoutxos", args.from.value, 
+      JSON.stringify({ [args.to.value]: [ TokenAmount.from(args.toAmount, "DFI").value ] }));
+      return new TxHash(trimConsoleText(res));
+    }
+
+    async transferDomain(args: TransferDomainArgs) {
+      const param = JSON.stringify([{ 
+          src: { 
+              address: args.from.value, 
+              amount: args.amount.toString(), 
+              domain: args.domainFrom 
+          },
+          dst: { 
+              address: args.to.value, 
+              amount: args.amount.toString(), 
+              domain: args.domainTo }, 
+              singlekeycheck: false 
+          }
+          ]);
+      const res = await this.outputString("transferdomain", param);
+      return new TxHash(trimConsoleText(res));
+  }
 }
 
 async function processRun(...args: string[]) {
@@ -226,6 +249,14 @@ class TokenAmount extends ValueType<string> {
         this._amount = amount;
     }
 
+    static from(amount: number, token: string) {
+      const res = Object.create(this.prototype);
+      res._token = token;
+      res._amount = amount;
+      res.value = res.toString();
+      return res;
+    }
+
     private _throwInvalidFormatError() {
         throw new Error("invalid token value format");
     }
@@ -233,6 +264,16 @@ class TokenAmount extends ValueType<string> {
     token() { return this._token; }
     amount() { return this._amount; }
     toString() { return this.amount() + "@" + this.token(); }
+}
+
+class SendToAddressArgs {
+  constructor(public address: Address, public amount: number, 
+    public comment = "", public commentTo = "", 
+    public subtractFeeFromAmount = false) {}
+}
+
+class AccountToUtxosArgs {
+    constructor(public from: Address, public to: Address, public toAmount: number) {};
 }
 
 class PoolSwapArgs {
@@ -253,6 +294,21 @@ class PoolSwapArgs {
     }
 }
 
+enum TransferDomainKind {
+  DVM = 2,
+  EVM = 3
+}
+
+class TransferDomainArgs {
+  constructor(
+      public from: Address,
+      public amount: TokenAmount,
+      public to: Address,
+      public domainFrom: TransferDomainKind,
+      public domainTo: TransferDomainKind) {
+  }
+}
+
 async function main() {
     const cli = new DfiCli(null, "-testnet");
     console.log(`DEFI_CLI: ${cli.path} ${cli.args.join(" ")}`);
@@ -261,8 +317,7 @@ async function main() {
         const height = await cli.getBlockHeight();
         console.log('height', height)
 
-
-        await cli.waitForBlock()
+        await cli.waitForBlock();
     }
 }
 
