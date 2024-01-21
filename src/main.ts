@@ -19,6 +19,8 @@ import {
 } from "./req.ts";
 import { GetTokenBalancesResponseDecoded } from "./resp.ts";
 
+import { ethers } from "esm/ethers";
+
 async function runEmissionSequence(
   cli: DfiCli,
   envOpts: EnvOpts,
@@ -82,6 +84,11 @@ async function main() {
       console.log(await cli.ethChainId());
       console.log(await cli.ethGetBalance(new Address("0x2683f524C6477a3D84c6d1492a1b51e0B4146d36")));
       console.log(await cli.ethGasPrice());
+
+      // TODO: Embed provider in cli
+      const provider = new ethers.JsonRpcProvider("http://localhost:18551");
+      let b = await provider.getBalance("0x2683f524C6477a3D84c6d1492a1b51e0B4146d36");
+      console.log(b);
       // ====== End: Test items ========
 
 

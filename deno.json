@@ -1,13 +1,14 @@
 {
   "tasks": {
-    "run": "deno run --unstable-kv -A src/main.ts",
-    "dev": "deno run --unstable-kv -A --watch src/main.ts",
-    "build": "deno compile --unstable-kv -A src/main.ts",
+    "run": "deno run --unstable-kv -A ./src/main.ts",
+    "dev": "deno run --unstable-kv -A --watch ./src/main.ts",
+    "build": "deno compile -A --output emissions-handler-bot ./src/main.ts",
     "fmt": "deno fmt"
   },
   "imports": {
     "std/": "https://deno.land/std@0.212.0/",
-    "x/": "https://deno.land/x/"
+    "x/": "https://deno.land/x/",
+    "esm/": "https://esm.sh/"
   },
   "unstable": ["kv"]
 }

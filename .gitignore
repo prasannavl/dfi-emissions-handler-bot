@@ -1,2 +1,4 @@
-.state*
 /tmp*
+/build/*
+/emissions-handler-bot
+.state*
