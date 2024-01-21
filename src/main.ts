@@ -2,16 +2,49 @@
 /// <reference lib="deno.unstable" />
 
 import { DfiCli } from "./cli.ts";
-import { Address, BlockHeight, TokenAmount } from "./common.ts";
+import {
+  Address,
+  BlockHeight,
+  dst20TokenIdToAddress,
+  TokenAmount,
+} from "./common.ts";
 import { EnvOpts, loadEnvOptions } from "./opts.ts";
 import {
   AccountToUtxosArgs,
   AddressMapKind,
+  AddressType,
   PoolSwapArgs,
   TransferDomainArgs,
   TransferDomainType,
 } from "./req.ts";
 import { GetTokenBalancesResponseDecoded } from "./resp.ts";
+
+async function runEmissionSequence(
+  cli: DfiCli,
+  envOpts: EnvOpts,
+  height: BlockHeight,
+  diffBlocks: number,
+) {
+  console.log(`runSequence: ${height.value} ${diffBlocks}`);
+  const ctx = await createContext(cli, envOpts, height, diffBlocks);
+  console.log(ctx);
+
+  await ensureUtxoRefilled(cli, ctx);
+  if (!initialSanityChecks(cli, ctx)) {
+    return;
+  }
+  await swapDfiToDusd(cli, ctx);
+  await makePostSwapCalc(cli, ctx);
+  if (!(await transferDomainDusdToErc55(cli, ctx))) {
+    return;
+  }
+  if (!await distributeDusdToContracts(cli, ctx)) {
+    return;
+  }
+
+  console.log(ctx);
+  console.log("completed Sequence");
+}
 
 async function main() {
   const cli = new DfiCli(null, "-testnet");
@@ -36,43 +69,35 @@ async function main() {
         await kv.set(["lastRunBlock"], lastRunBlock);
       };
 
+      // ===== Start: Test items ======
+      console.log(
+        await cli.ethGetBalance(
+          new Address("0x2683f524C6477a3D84c6d1492a1b51e0B4146d36"),
+        ),
+      );
+      const dusdToken = await cli.getToken("DUSD");
+      console.log(dusdToken);
+      console.log(dst20TokenIdToAddress(dusdToken.id));
+      // console.log((await cli.getNewAddress()));
+      console.log(await cli.ethChainId());
+      console.log(await cli.ethGetBalance(new Address("0x2683f524C6477a3D84c6d1492a1b51e0B4146d36")));
+      console.log(await cli.ethGasPrice());
+      // ====== End: Test items ========
+
+
       const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
       if (
         forceStart ||
         (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0)
       ) {
         // Run if we've either skipped in-between or during the mod period
-        runEmissionSequence(cli, envOpts, height, diffBlocks);
+        // runEmissionSequence(cli, envOpts, height, diffBlocks);
         await updateState();
       }
     }
   });
 
   await cli.runBlockEventLoop();
-}
-
-async function runEmissionSequence(
-  cli: DfiCli,
-  envOpts: EnvOpts,
-  height: BlockHeight,
-  diffBlocks: number,
-) {
-  console.log(`runSequence: ${height.value} ${diffBlocks}`);
-  const ctx = await createContext(cli, envOpts, height, diffBlocks);
-  console.log(ctx);
-
-  await ensureUtxoRefilled(cli, ctx);
-  if (!initialSanityChecks(cli, ctx)) {
-    return;
-  }
-  await swapDfiToDusd(cli, ctx);
-  await makePostSwapCalc(cli, ctx);
-  if (!(await transferDomainDusdToErc55(cli, ctx))) {
-    return;
-  }
-  if (!await distributeDusdToContracts(cli, ctx)) {
-    return;
-  }
 }
 
 function resolveForceStart(envOpts: EnvOpts) {
@@ -105,8 +130,7 @@ async function createContext(
   const balanceTokensInitDfi = balanceTokensInit["DFI"];
   const balanceTokensInitDusd = balanceTokensInit["DUSD"];
 
-  const dfiPriceForDusd =
-    Object.values(poolPairInfoDusdDfi)[0]["reserveB/reserveA"];
+  const dfiPriceForDusd = poolPairInfoDusdDfi["reserveB/reserveA"];
   const dfiForDusdCappedPerBlock = dfiPriceForDusd * maxDUSDPerBlock;
   const dfiToSwapPerBlock = Math.min(
     balanceTokensInitDfi,
@@ -208,7 +232,7 @@ async function swapDfiToDusd(
   const ss = state.swapDfiToDusd;
 
   console.log(
-    `swap: ${dfiToSwapForDiffBlocks} DFI to DUSD // ${state.currentHeight.value}}`,
+    `swap: ${dfiToSwapForDiffBlocks} DFI to DUSD // ${state.currentHeight.value}`,
   );
 
   const tx = await cli.poolSwap(
@@ -284,8 +308,10 @@ async function distributeDusdToContracts(
   }
 
   // Build EVMTx for distributing to EVM contract addresses
+  // We don't actually use the evmAddr2Share for now, since this helps us
+  // redirect rounding errors to share 2.
   const evmAddr1Amount = dUsdToTransfer * evmAddr1Share;
-  const evmAddr2Amount = dUsdToTransfer * evmAddr2Share;
+  const evmAddr2Amount = dUsdToTransfer - evmAddr1Amount;
 
   // Move DUSD DST20 to the smart contracts
 

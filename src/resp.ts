@@ -2,29 +2,28 @@ import { TokenAmount } from "./common.ts";
 import { AddressMapKind } from "./req.ts";
 
 export interface GetPoolPairResponse {
-  [id: string]: {
-    symbol: string;
-    name: string;
-    status: boolean;
-    idTokenA: string;
-    idTokenB: string;
-    dexFeePctTokenA: number;
-    dexFeeInPctTokenA: number;
-    reserveA: number;
-    reserveB: number;
-    commission: number;
-    totalLiquidity: number;
-    "reserveA/reserveB": number;
-    "reserveB/reserveA": number;
-    tradeEnabled: boolean;
-    ownerAddress: string;
-    blockCommissionA: number;
-    blockCommissionB: number;
-    rewardPct: number;
-    rewardLoanPct: number;
-    creationTx: string;
-    creationHeight: number;
-  };
+  id: number;
+  symbol: string;
+  name: string;
+  status: boolean;
+  idTokenA: string;
+  idTokenB: string;
+  dexFeePctTokenA: number;
+  dexFeeInPctTokenA: number;
+  reserveA: number;
+  reserveB: number;
+  commission: number;
+  totalLiquidity: number;
+  "reserveA/reserveB": number;
+  "reserveB/reserveA": number;
+  tradeEnabled: boolean;
+  ownerAddress: string;
+  blockCommissionA: number;
+  blockCommissionB: number;
+  rewardPct: number;
+  rewardLoanPct: number;
+  creationTx: string;
+  creationHeight: number;
 }
 
 export interface GetTransactionResponse {
@@ -165,4 +164,25 @@ export interface AddressMapResponse {
   format: {
     [key: string]: string;
   };
+}
+
+export interface GetTokenResponse {
+  id: number;
+  symbol: string;
+  symbolKey: string;
+  name: string;
+  decimal: number;
+  limit: number;
+  mintable: boolean;
+  tradeable: boolean;
+  isDAT: boolean;
+  isLPS: boolean;
+  finalized: boolean;
+  isLoanToken: boolean;
+  minted: number;
+  creationTx: string;
+  creationHeight: number;
+  destructionTx: string;
+  destructionHeight: number;
+  collateralAddress: string;
 }

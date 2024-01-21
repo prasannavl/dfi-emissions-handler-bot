@@ -73,3 +73,10 @@ export enum AddressMapKind {
   DvmToErc55 = 1,
   Erc55ToDvm = 2,
 }
+
+export enum AddressType {
+  Legacy = "legacy",
+  Bech32 = "bech32",
+  Erc55 = "erc55",
+  P2SHSegwit = "p2sh-segwit",
+}

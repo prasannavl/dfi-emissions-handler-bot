@@ -1,12 +1,14 @@
 import {
   Address,
+  Amount,
   BlockHash,
   BlockHeight,
   flattenValues,
+  hexToDecimal,
   TokenAmount,
   TxHash,
 } from "./common.ts";
-import { AddressMapKind } from "./req.ts";
+import { AddressMapKind, AddressType } from "./req.ts";
 import {
   AccountToUtxosArgs,
   EvmTxArgs,
@@ -24,6 +26,7 @@ import {
   GetTokenBalancesResponse,
   GetTokenBalancesResponseArray,
   GetTokenBalancesResponseDecoded,
+  GetTokenResponse,
   GetTransactionResponse,
 } from "./resp.ts";
 
@@ -107,8 +110,15 @@ export class DfiCli {
     }
   }
 
-  async getNewAddress(): Promise<Address> {
-    const res = await this.outputString("getnewaddress");
+  async getNewAddress(
+    type: AddressType = AddressType.Bech32,
+    label = "",
+  ): Promise<Address> {
+    const res = await this.outputString(
+      "getnewaddress",
+      label,
+      type.toString(),
+    );
     return new Address(trimConsoleText(res));
   }
 
@@ -150,10 +160,24 @@ export class DfiCli {
     }
   }
 
-  async getPoolPair(poolPairIdOrName: string) {
-    const res = await this.output("getpoolpair", poolPairIdOrName);
+  async getToken(args: string) {
+    const res = await this.output("gettoken", args);
     const resJson = res.json();
-    return resJson as GetPoolPairResponse;
+    // We fix up the id so make life easier
+    const id = Object.keys(resJson)[0];
+    let o = Object.values(resJson)[0] as any;
+    o["id"] = parseInt(id);
+    return o as GetTokenResponse;
+  }
+
+  async getPoolPair(args: string) {
+    const res = await this.output("getpoolpair", args);
+    const resJson = res.json();
+    // We fix up the id so make life easier
+    const id = Object.keys(resJson)[0];
+    let o = Object.values(resJson)[0] as any;
+    o["id"] = parseInt(id);
+    return o as GetPoolPairResponse;
   }
 
   async poolSwap(args: PoolSwapArgs) {
@@ -184,6 +208,29 @@ export class DfiCli {
   async getBlockHash(args: BlockHeight) {
     const res = await this.outputString("getblockhash", args.value.toString());
     return new TxHash(trimConsoleText(res));
+  }
+
+  async ethGetBalance(args: Address) {
+    const res = await this.outputString(
+      "eth_getBalance",
+      args.value.toString(),
+    );
+    return new Amount(hexToDecimal(trimConsoleText(res)));
+  }
+
+  async ethChainId() {
+    const res = await this.outputString("eth_chainId");
+    return hexToDecimal(trimConsoleText(res));
+  }
+
+  async ethGasPrice() {
+    const res = await this.outputString("eth_gasPrice");
+    return new Amount(hexToDecimal(trimConsoleText(res)));
+  }
+
+  async ethAccounts() {
+    const res = await this.output("eth_accounts");
+    return res.json() as string[];
   }
 
   async getBlock(args: BlockHash, verbosity = 0): Promise<GetBlockResponse> {

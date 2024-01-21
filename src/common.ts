@@ -68,3 +68,67 @@ export function flattenValues(args: any) {
   }
   return res;
 }
+
+// TODO: Use BigInt for these soon
+// For the purpose of this bot, it may be ok-ish
+// to get everything up and running, 
+// but will very quickly fall over losing precision
+export class Amount {
+  private _wei: number;
+  constructor(wei: number) {
+    this._wei = wei;
+  }
+
+  static fromUnit(unit: number) {
+    return new Amount(unit * 1e18);
+  }
+
+  static fromSats(sats: number) {
+    return new Amount(sats * 1e10);
+  }
+
+  static fromGwei(gwei: number) {
+    return new Amount(gwei * 1e9);
+  }
+
+  wei() {
+    return this._wei;
+  }
+
+  gwei() {
+    return this._wei * 1e-9;
+  }
+
+  sats() {
+    return this._wei * 1e-10;
+  }
+
+  unit() {
+    return this._wei * 1e-18;
+  }
+
+  toString() {
+    return this.unit();
+  }
+}
+
+// Note that this method will lose precision.
+// We want to be using big ints for ops that can't 
+// accept the loss of accuracy
+export function hexToDecimal(hex: string) {
+  if (hex.startsWith("0x")) {
+    hex = hex.slice(2);
+  }
+  return parseInt(hex, 16);
+}
+
+export function decimalToHex(dec: number, prefix0x = true) {
+  return prefix0x ? "0x" : "" + dec.toString(16);
+}
+
+// https://github.com/DeFiCh/ain/blob/ce178e6711de32390ed3d166e4b1d7012bc853b2/lib/ain-contracts/src/lib.rs#L84
+export function dst20TokenIdToAddress(tokenId: number): Address {
+  const hexStr = decimalToHex(tokenId, false);
+  const str = `0xff${hexStr.padStart(38, "0")}`;
+  return new Address(str);
+}
