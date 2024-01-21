@@ -1,3 +1,4 @@
+import { ethers } from "esm/ethers";
 import {
   Address,
   Amount,
@@ -30,9 +31,12 @@ import {
   GetTransactionResponse,
 } from "./resp.ts";
 
+export { ethers };
+
 export class DfiCli {
   public path: string;
   public args: string[];
+  private _evmProvider: ethers.JsonRpcProvider | null = null;
   private _onEachBlockFuncs: Array<(height: BlockHeight) => Promise<void>> = [];
 
   constructor(cliPath?: string | null, ...args: string[]) {
@@ -72,6 +76,14 @@ export class DfiCli {
 
   async outputString(...args: string[]) {
     return (await this.output(...args)).toString();
+  }
+
+  setEvmProvider(provider: ethers.JsonRpcProvider) {
+    this._evmProvider = provider;
+  }
+
+  evm() {
+    return this._evmProvider;
   }
 
   async waitForBlock(minHeight?: BlockHeight) {

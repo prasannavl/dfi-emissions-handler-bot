@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --unstable-kv -A
 /// <reference lib="deno.unstable" />
 
-import { DfiCli } from "./cli.ts";
+import { DfiCli, ethers } from "./cli.ts";
 import {
   Address,
   BlockHeight,
@@ -19,8 +19,6 @@ import {
 } from "./req.ts";
 import { GetTokenBalancesResponseDecoded } from "./resp.ts";
 
-import { ethers } from "esm/ethers";
-
 async function runEmissionSequence(
   cli: DfiCli,
   envOpts: EnvOpts,
@@ -32,11 +30,13 @@ async function runEmissionSequence(
   console.log(ctx);
 
   await ensureUtxoRefilled(cli, ctx);
+  // TODO: ensureDFIOnEvm
   if (!initialSanityChecks(cli, ctx)) {
     return;
   }
   await swapDfiToDusd(cli, ctx);
   await makePostSwapCalc(cli, ctx);
+  // TODO: Add burn in the end to burn rest.
   if (!(await transferDomainDusdToErc55(cli, ctx))) {
     return;
   }
@@ -51,6 +51,8 @@ async function runEmissionSequence(
 async function main() {
   const cli = new DfiCli(null, "-testnet");
   console.log(`cli: ${cli.path} ${cli.args.join(" ")}`);
+  cli.setEvmProvider(new ethers.JsonRpcProvider("http://localhost:18551"));
+
   const kv = await Deno.openKv(".state");
 
   let lastRunBlock = (await kv.get<number>(["lastRunBlock"]))?.value ?? 0;
@@ -80,15 +82,10 @@ async function main() {
       const dusdToken = await cli.getToken("DUSD");
       console.log(dusdToken);
       console.log(dst20TokenIdToAddress(dusdToken.id));
-      // console.log((await cli.getNewAddress()));
-      console.log(await cli.ethChainId());
-      console.log(await cli.ethGetBalance(new Address("0x2683f524C6477a3D84c6d1492a1b51e0B4146d36")));
-      console.log(await cli.ethGasPrice());
 
-      // TODO: Embed provider in cli
-      const provider = new ethers.JsonRpcProvider("http://localhost:18551");
-      let b = await provider.getBalance("0x2683f524C6477a3D84c6d1492a1b51e0B4146d36");
-      console.log(b);
+      const evm = cli.evm()!;
+      console.log(await evm.getBalance("0x2683f524C6477a3D84c6d1492a1b51e0B4146d36"));
+
       // ====== End: Test items ========
 
 
