@@ -194,7 +194,7 @@ export function initialSanityChecks(
     return false;
   }
   const dusdTokenBalanceStart = balanceTokensInit["DUSD"] || 0;
-  if (dusdTokenBalanceStart > 500) {
+  if (dusdTokenBalanceStart > 1000) {
     console.log(
       `DUSD starting balance too high. skipping for manual verification`,
     );
