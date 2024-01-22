@@ -342,6 +342,10 @@ export async function distributeDusdToContracts(
 
   // Move DUSD DST20 to the smart contracts
 
+  // https://github.com/kuegi/dusd-lock-bot/blob/main/bot/DUSDLockRewards.ts
+  // Seems to have it's own addRewards method. Will need to add to that instead
+  // of a simple transfer.
+
   const evm = cli.evm()!;
   const signer = await evm.getSigner(emissionsAddrErc55.value);
   const cx = evmDusdContract.connect(signer) as ethers.Contract;

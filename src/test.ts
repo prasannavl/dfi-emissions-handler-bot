@@ -110,6 +110,10 @@ async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
     signer,
   );
 
+  // https://github.com/kuegi/dusd-lock-bot/blob/main/bot/DUSDLockRewards.ts
+  // Seems to have it's own addRewards method. Will need to add to that instead
+  // of a simple transfer.
+
   console.log(`transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1Amount}`);
   await evmDusdContract.transfer(evmAddr1, evmAddr1Amount);
   console.log(`transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2Amount}`);
