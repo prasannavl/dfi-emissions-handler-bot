@@ -16,6 +16,7 @@ import {
 } from "./req.ts";
 import { GetTokenBalancesResponseDecoded } from "./resp.ts";
 import dst20Abi from "./data/dst20.abi.json" with { type: "json" };
+import lockBotAbi from "./data/DUSDBonds.abi.json" with { type: "json" };
 import { Amount } from "./common.ts";
 
 export class ChainSteps {
@@ -67,9 +68,21 @@ export async function createContext(
   const dUsdToken = await cli.getToken("DUSD");
 
   const evmDusdTokenDst20Addr = dst20TokenIdToAddress(dUsdToken.id);
+  const lockBotAddress_1Y = "0x78090025D0F3Cd3dC189Eb5DBeEC9FD901122be2";
+  const lockBotAddress_2Y = "0x0d4CD969E92E942ADB3d7DB1a4bb77cf0dD7323b";
   const evmDusdContract = new ethers.Contract(
     evmDusdTokenDst20Addr.value,
     dst20Abi,
+    cli.evm()!,
+  );
+  const lockBotContract_1Y = new ethers.Contract(
+    lockBotAddress_1Y,
+    lockBotAbi,
+    cli.evm()!,
+  );
+  const lockBotContract_2Y = new ethers.Contract(
+    lockBotAddress_2Y,
+    lockBotAbi,
     cli.evm()!,
   );
 
@@ -120,6 +133,12 @@ export async function createContext(
     // We wrap this as fn, as it fails to be printed
     getEvmDusdContract() {
       return evmDusdContract;
+    },
+    getLockBot1YContract() {
+      return lockBotContract_1Y;
+    },
+    getLockBot2YContract() {
+      return lockBotContract_2Y;
     },
     state: {
       currentHeight: height,
@@ -304,7 +323,7 @@ export async function distributeDusdToContracts(
     return false;
   }
 
-  const { balanceEvmInitDusd, emissionsAddrErc55, getEvmDusdContract } = ctx;
+  const { balanceEvmInitDusd, emissionsAddrErc55, getEvmDusdContract, getLockBot1YContract, getLockBot2YContract } = ctx;
   const evmDusdContract = getEvmDusdContract();
   const balanceEvmDusd: bigint = await evmDusdContract.balanceOf(
     emissionsAddrErc55.value,
@@ -349,18 +368,22 @@ export async function distributeDusdToContracts(
   // Seems to have it's own addRewards method. Will need to add to that instead
   // of a simple transfer.
 
+  const lockBotContract_1Y = getLockBot1YContract();
+  const lockBotContract_2Y = getLockBot2YContract();
+
   const evm = cli.evm()!;
   const signer = await evm.getSigner(emissionsAddrErc55.value);
-  const cx = evmDusdContract.connect(signer) as ethers.Contract;
+  const cx_1Y = lockBotContract_1Y.connect(signer) as ethers.Contract;
+  const cx_2Y = lockBotContract_2Y.connect(signer) as ethers.Contract;
 
   console.log(
     `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
-  await cx.transfer(evmAddr1, BigInt(evmAddr1AmountInWei));
+  await cx_1Y.addRewards(BigInt(evmAddr1AmountInWei));
   console.log(
     `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
-  await cx.transfer(evmAddr2, BigInt(evmAddr2AmountInWei));
+  await cx_2Y.addRewards(BigInt(evmAddr2AmountInWei));
   console.log("transfer domain of dusd completed");
   return true;
 }
