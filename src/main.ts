@@ -22,8 +22,10 @@ import {
 } from "./impl.ts";
 
 import { test } from "./test.ts";
+import { patchConsoleLogWithTime } from "./common.ts";
 
 async function main() {
+  patchConsoleLogWithTime();
   const cli = new DfiCli(null, "-testnet");
   console.log(`cli: ${cli.path} ${cli.args.join(" ")}`);
 
