@@ -2,14 +2,22 @@
 
 DFI emissions handler bot
 
-### Run
+### Dev
 
-- `deno task run`
+#### Steps
+
+- Clone repo
+- The only pre-requisite is [deno](https://deno.com).
+- Use `.env` file to change params if needed.
+- Run tasks below as needed.
+- For all options and defaults see `opts.ts`
+
+#### Tasks
+
+- `deno task run`- single execution of the program
 - `deno task compile` - to get a single deployable binary
 - `deno fmt` - fmt code before checking in
 - `deno task dev` - for reloading dev
-- Use `.env` file to change params for testing.
-- For all options and defaults see `opts.ts`
 
 ### Notes
 
