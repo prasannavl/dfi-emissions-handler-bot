@@ -40,7 +40,7 @@ async function main() {
 
   // Test method to intercept and exit
   // Uncomment to test small units
-  await test(cli, envOpts);
+  // await test(cli, envOpts);
 
   cli.addEachBlockEvent(async (height) => {
     const forceStart = resolveForceStart(envOpts);
@@ -56,7 +56,7 @@ async function main() {
       const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
 
       // ===== Start: Test items ======
-      // await runEmissionSequence(cli, envOpts, height, 1);
+      await runEmissionSequence(cli, envOpts, height, 1);      
       // ====== End: Test items ========
 
       if (

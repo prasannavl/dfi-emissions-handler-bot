@@ -28,8 +28,8 @@ import dst20Abi from "./data/dst20.abi.json" with { type: "json" };
 
 export async function test(cli: DfiCli, envOpts: EnvOpts) {
   // await seed(cli, envOpts);
-  // await reset(cli, envOpts);
-  await bespoke(cli, envOpts);
+  await reset(cli, envOpts);
+  // await bespoke(cli, envOpts);
   Deno.exit(0);
 }
 
@@ -58,29 +58,29 @@ async function reset(cli: DfiCli, envOpts: EnvOpts) {
   const h = await cli.getBlockHeight();
   const ctx = await createContext(cli, envOpts, h, 0);
   const { emissionsAddr, emissionsAddrErc55 } = ctx;
-  //   const tx = await cli.transferDomain(
-  //     new TransferDomainArgs(
-  //       TokenAmount.from(150, "DUSD"),
-  //       emissionsAddrErc55,
-  //       emissionsAddr,
-  //       TransferDomainType.Evm,
-  //       TransferDomainType.Dvm,
-  //     ),
-  //   );
-  //   await cli.waitForTx(tx);
-  //   const dusdbal = ctx.balanceTokensInitDusd;
-  //   const tx2 = await cli.poolSwap(
-  //     new PoolSwapArgs(
-  //       emissionsAddr,
-  //       "DUSD",
-  //       "DFI",
-  //       dusdbal,
-  //     ),
-  //   );
-  //   await cli.waitForTx(tx2);
+    // const tx = await cli.transferDomain(
+    //   new TransferDomainArgs(
+    //     TokenAmount.from(150, "DUSD"),
+    //     emissionsAddrErc55,
+    //     emissionsAddr,
+    //     TransferDomainType.Evm,
+    //     TransferDomainType.Dvm,
+    //   ),
+    // );
+    // await cli.waitForTx(tx);
+    const dusdbal = ctx.balanceTokensInitDusd;
+    const tx2 = await cli.poolSwap(
+      new PoolSwapArgs(
+        emissionsAddr,
+        "DUSD",
+        "DFI",
+        dusdbal,
+      ),
+    );
+    await cli.waitForTx(tx2);
 
-  const t = await cli.sendUtxosFrom(emissionsAddr, emissionsAddr, 10);
-  await cli.waitForTx(t);
+  // const t = await cli.sendUtxosFrom(emissionsAddr, emissionsAddr, 10);
+  // await cli.waitForTx(t);
   Deno.exit(0);
 }
 
