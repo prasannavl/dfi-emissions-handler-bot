@@ -176,7 +176,6 @@ export async function ensureFeeReserves(
       new AccountToUtxosArgs(emissionsAddr, emissionsAddr, feeReserveAmount),
     );
     await cli.waitForTx(tx);
-    console.log("done");
 
     state.balanceTokensDfi -= feeReserveAmount;
     state.currentHeight = await cli.getBlockHeight();
@@ -203,7 +202,6 @@ export async function ensureFeeReserves(
       ),
     );
     await cli.waitForTx(tx);
-    console.log("done");
 
     state.balanceTokensDfi -= feeReserveAmount;
     state.balanceEvmDfi = await cli.evm()!.getBalance(emissionsAddrErc55.value);
@@ -267,8 +265,6 @@ export async function swapDfiToDusd(
   );
   ss.swapHeight = await cli.waitForTx(tx);
   state.currentHeight = await cli.getBlockHeight();
-
-  console.log("done");
 }
 
 export async function makePostSwapCalc(
@@ -327,7 +323,6 @@ export async function transferDomainDusdToErc55(
   );
 
   state.currentHeight = await cli.waitForTx(tx);
-  console.log("done");
   return true;
 }
 
@@ -382,14 +377,11 @@ export async function distributeDusdToContracts(
   const evmAddr1Amount = v * evmAddr1Share;
   const evmAddr2Amount = v - evmAddr1Amount;
 
-  console.log(`evmAddr1Amount: ${evmAddr1Amount}`);
-  console.log(`evmAddr2Amount: ${evmAddr2Amount}`);
-
   const evmAddr1AmountInWei = Amount.fromUnit(evmAddr1Amount).weiAsBigInt();
   const evmAddr2AmountInWei = Amount.fromUnit(evmAddr2Amount).weiAsBigInt();
 
-  console.log(`evmAddr1AmountInWei: ${evmAddr1AmountInWei}`);
-  console.log(`evmAddr2AmountInWei: ${evmAddr2AmountInWei}`);
+  console.log(`evmAddr1Amount: ${evmAddr1Amount} // ${evmAddr1AmountInWei}`);
+  console.log(`evmAddr2Amount: ${evmAddr2Amount} // ${evmAddr2AmountInWei}`);
 
   // Move DUSD DST20 to the smart contracts
 
@@ -415,28 +407,24 @@ export async function distributeDusdToContracts(
   const cxLocks2y = lockBotContract2y.connect(signer) as ethers.Contract;
 
   console.log(
-    `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+    `approve DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
   await cxDusd.approve(evmAddr1, evmAddr1AmountInWei);
-  console.log("done");
 
   console.log(
     `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
   await cxLocks1y.addRewards(evmAddr1AmountInWei);
-  console.log("done");
 
   console.log(
-    `approving DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
+    `approve DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
   await cxDusd.approve(evmAddr2, evmAddr2AmountInWei);
-  console.log("done");
 
   console.log(
     `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
   await cxLocks2y.addRewards(evmAddr2AmountInWei);
-  console.log("done");
 
   return true;
 }
