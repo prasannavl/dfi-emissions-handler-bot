@@ -46,11 +46,15 @@ export enum TransferDomainType {
 
 export class TransferDomainArgs {
   constructor(
-    public from: Address,
     public amount: TokenAmount,
+    public from: Address,
     public to: Address,
     public domainFrom: TransferDomainType,
     public domainTo: TransferDomainType,
+    public nonce: number | undefined = undefined,
+    // Disabled due to a bug in the nonce, which makes nonce mandatory if
+    // if singlekeycheck is specified.
+    // public singleKeyCheck = false,
   ) {
   }
 }
@@ -79,4 +83,34 @@ export enum AddressType {
   Bech32 = "bech32",
   Erc55 = "erc55",
   P2SHSegwit = "p2sh-segwit",
+}
+
+export class AccountToAccountArgs {
+  constructor(
+    public from: Address,
+    public to: Address,
+    public amount: TokenAmount,
+  ) {}
+}
+
+export class SendTokensToAddressArgs {
+  public from: { [key: string]: string } = {};
+  public to: { [key: string]: string } = {};
+
+  constructor(
+    amount: TokenAmount,
+    fromAddress: string,
+    toAddress: string,
+    public selectionMode: SendTokensToAddressSelectionMode =
+      SendTokensToAddressSelectionMode.Pie,
+  ) {
+    this.from[fromAddress] = amount.toString();
+    this.to[toAddress] = amount.toString();
+  }
+}
+
+export enum SendTokensToAddressSelectionMode {
+  Forward = "forward",
+  Crumbs = "crumbs",
+  Pie = "pie",
 }

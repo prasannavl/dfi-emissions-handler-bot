@@ -27,6 +27,7 @@ export class TokenAmount extends ValueType<string> {
     }
     this._token = token;
     this._amount = amount;
+    this.value = this.toString();
   }
 
   static from(amount: number, token: string) {
@@ -48,13 +49,19 @@ export class TokenAmount extends ValueType<string> {
     return this._amount;
   }
   toString() {
-    return this.amount() + "@" + this.token();
+    return this.amount().toFixed(8) + "@" + this.token();
   }
 }
 
-export function flattenValues(args: any) {
+export function makeSerializable(args: any) {
   if (args instanceof ValueType) {
     return args.value;
+  }
+
+  // Set max. precision to 8 or most numerics
+  // will fail.
+  if (typeof args === "number") {
+    return args.toFixed(8);
   }
 
   const res: any = {};
@@ -62,6 +69,8 @@ export function flattenValues(args: any) {
     const prop = args[propName];
     if (prop instanceof ValueType) {
       res[propName] = prop.value;
+    } else if (typeof prop === "number") {
+      res[propName] = prop.toFixed(8);
     } else {
       res[propName] = prop;
     }
@@ -71,7 +80,7 @@ export function flattenValues(args: any) {
 
 // TODO: Use BigInt for these soon
 // For the purpose of this bot, it may be ok-ish
-// to get everything up and running, 
+// to get everything up and running,
 // but will very quickly fall over losing precision
 export class Amount {
   private _wei: number;
@@ -113,7 +122,7 @@ export class Amount {
 }
 
 // Note that this method will lose precision.
-// We want to be using big ints for ops that can't 
+// We want to be using big ints for ops that can't
 // accept the loss of accuracy
 export function hexToDecimal(hex: string) {
   if (hex.startsWith("0x")) {

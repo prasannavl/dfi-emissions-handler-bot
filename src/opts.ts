@@ -24,6 +24,7 @@ export async function loadEnvOptions() {
   await load({ export: true });
 
   const opts = {
+    evmJsonRpc: new Option("BOT_EVM_JSON_RPC", "", true, (v) => v),
     emissionsAddr: new Option("BOT_EMISSIONS_ADDRESS", "", true, (v) => v),
     evmAddr1: new Option("BOT_SC_YEAR_1_ADDR", "", true, (v) => v),
     evmAddr1Share: new Option(
@@ -46,7 +47,7 @@ export async function loadEnvOptions() {
       false,
       (v) => v === "true" || v === "1",
     ),
-    startBlock: new Option("BOT_START_BLOCK", "1300000", false, parseInt),
+    startBlock: new Option("BOT_START_BLOCK", "1345367", false, parseInt),
     endBlock: new Option(
       "BOT_END_BLOCK",
       "-1",
@@ -55,14 +56,15 @@ export async function loadEnvOptions() {
     ),
     maxDUSDPerBlock: new Option(
       "BOT_MAX_DUSD_PER_BLOCK",
-      "20",
+      "1",
       false,
       parseInt,
     ),
-    utxoReserve: new Option("BOT_UTXO_RESERVE", "10", false, parseInt),
+    feeReserveAmount: new Option("BOT_FEE_RESERVE", "10", false, parseInt),
   };
 
   return {
+    evmJsonRpc: opts.evmJsonRpc.get(),
     emissionsAddr: opts.emissionsAddr.get(),
     evmAddr1: opts.evmAddr1.get(),
     evmAddr1Share: opts.evmAddr1Share.get(),
@@ -73,6 +75,6 @@ export async function loadEnvOptions() {
     startBlock: opts.startBlock.get(),
     endBlock: opts.endBlock.get(),
     maxDUSDPerBlock: opts.maxDUSDPerBlock.get(),
-    utxoReserve: opts.utxoReserve.get(),
+    feeReserveAmount: opts.feeReserveAmount.get(),
   };
 }

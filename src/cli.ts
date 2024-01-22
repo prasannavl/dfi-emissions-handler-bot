@@ -4,12 +4,17 @@ import {
   Amount,
   BlockHash,
   BlockHeight,
-  flattenValues,
   hexToDecimal,
+  makeSerializable,
   TokenAmount,
   TxHash,
 } from "./common.ts";
-import { AddressMapKind, AddressType } from "./req.ts";
+import {
+  AccountToAccountArgs,
+  AddressMapKind,
+  AddressType,
+  SendTokensToAddressArgs,
+} from "./req.ts";
 import {
   AccountToUtxosArgs,
   EvmTxArgs,
@@ -92,7 +97,8 @@ export class DfiCli {
     if (!min) min = current + 1;
 
     while (current < min) {
-      await new Promise((res, _) => setTimeout(() => res(0), 30 * 1000));
+      // we check every 15s
+      await new Promise((res, _) => setTimeout(() => res(0), 15 * 1000));
       current = (await this.getBlockHeight()).value;
       // console.debug(`wait for block: ${min}, current: ${current}`);
     }
@@ -195,7 +201,7 @@ export class DfiCli {
   async poolSwap(args: PoolSwapArgs) {
     const res = await this.outputString(
       "poolswap",
-      JSON.stringify(flattenValues(args)),
+      JSON.stringify(makeSerializable(args)),
     );
     return new TxHash(trimConsoleText(res));
   }
@@ -203,7 +209,7 @@ export class DfiCli {
   async compositeSwap(args: PoolSwapArgs) {
     const res = await this.outputString(
       "compositeswap",
-      JSON.stringify(flattenValues(args)),
+      JSON.stringify(makeSerializable(args)),
     );
     return new TxHash(trimConsoleText(res));
   }
@@ -211,7 +217,7 @@ export class DfiCli {
   async testPoolSwap(args: PoolSwapArgs) {
     const res = await this.outputString(
       "testpoolswap",
-      JSON.stringify(flattenValues(args)),
+      JSON.stringify(makeSerializable(args)),
       "auto",
     );
     return new TokenAmount(trimConsoleText(res));
@@ -220,6 +226,12 @@ export class DfiCli {
   async getBlockHash(args: BlockHeight) {
     const res = await this.outputString("getblockhash", args.value.toString());
     return new TxHash(trimConsoleText(res));
+  }
+
+  async getAccount(args: Address) {
+    const res = await this.output("getaccount", args.value);
+    const resJson = res.json() as string[];
+    return resJson.map((x) => new TokenAmount(x));
   }
 
   async ethGetBalance(args: Address) {
@@ -313,13 +325,58 @@ export class DfiCli {
     return new TxHash(trimConsoleText(res));
   }
 
+  async sendUtxosFrom(
+    from: Address,
+    to: Address,
+    amount: number,
+    changeAddress?: Address,
+  ) {
+    const res = await this.outputString(
+      "sendutxosfrom",
+      from.value,
+      to.value,
+      amount.toFixed(8),
+      changeAddress ? changeAddress.value : from.value,
+    );
+    return new TxHash(trimConsoleText(res));
+  }
+
   async accountToUtxos(args: AccountToUtxosArgs) {
     const res = await this.outputString(
       "accounttoutxos",
       args.from.value,
       JSON.stringify({
-        [args.to.value]: [TokenAmount.from(args.toAmount, "DFI").value],
+        [args.to.value]: [TokenAmount.from(args.toAmount, "DFI").toString()],
       }),
+    );
+    return new TxHash(trimConsoleText(res));
+  }
+
+  async accountToAccount(args: AccountToAccountArgs) {
+    const res = await this.outputString(
+      "accounttoaccount",
+      args.from.value,
+      JSON.stringify({ [args.to.value]: args.amount.toString() }),
+    );
+    return new TxHash(trimConsoleText(res));
+  }
+
+  async utxosToAccount(address: Address, amount: number) {
+    const res = await this.outputString(
+      "utxostoaccount",
+      JSON.stringify({
+        [address.value]: [TokenAmount.from(amount, "DFI").toString()],
+      }),
+    );
+    return new TxHash(trimConsoleText(res));
+  }
+
+  async sendTokensToAddress(args: SendTokensToAddressArgs) {
+    const res = await this.outputString(
+      "sendtokenstoaddress",
+      JSON.stringify(args.from),
+      JSON.stringify(args.to),
+      args.selectionMode.toString(),
     );
     return new TxHash(trimConsoleText(res));
   }
@@ -350,7 +407,8 @@ export class DfiCli {
         amount: args.amount.toString(),
         domain: args.domainTo,
       },
-      singlekeycheck: false,
+      nonce: args.nonce,
+      // singlekeycheck: args.singleKeyCheck,
     }]);
     const res = await this.outputString("transferdomain", param);
     return new TxHash(trimConsoleText(res));
