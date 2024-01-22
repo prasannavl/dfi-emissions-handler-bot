@@ -322,7 +322,9 @@ export async function distributeDusdToContracts(
   // Note, we're still converting a float. So, can expect this
   // to be off and fail. Just until the rest of the parts
   // are moved off float.
-  if (evmDusdDiff != BigInt(Amount.fromUnit(dUsdToTransfer).wei().toFixed(0))) {
+  if (
+    evmDusdDiff - BigInt(Math.floor(Amount.fromUnit(dUsdToTransfer).wei()) > 1)
+  ) {
     console.log(
       "DUSD mistmatch between transfer and init balance; manual verification required",
     );
@@ -348,8 +350,17 @@ export async function distributeDusdToContracts(
   const evmAddr1Amount = v * evmAddr1Share;
   const evmAddr2Amount = v - evmAddr1Amount;
 
-  const evmAddr1AmountInWei = Amount.fromUnit(evmAddr1Amount).wei().toFixed(0);
-  const evmAddr2AmountInWei = Amount.fromUnit(evmAddr2Amount).wei().toFixed(0);
+  console.log(`evmAddr1Amount: ${evmAddr1Amount}`);
+  console.log(`evmAddr2Amount: ${evmAddr2Amount}`);
+
+  const evmAddr1AmountInWei = Math.floor(Amount.fromUnit(evmAddr1Amount).wei());
+  const evmAddr1AmountInWeiBn = BigInt(evmAddr1AmountInWei);
+
+  const evmAddr2AmountInWei = Math.floor(Amount.fromUnit(evmAddr2Amount).wei());
+  const evmAddr2AmountInWeiBn = BigInt(evmAddr2AmountInWei);
+
+  console.log(`evmAddr1AmountInWei: ${evmAddr1AmountInWeiBn}`);
+  console.log(`evmAddr2AmountInWei: ${evmAddr2AmountInWeiBn}`);
 
   // Move DUSD DST20 to the smart contracts
 
@@ -359,43 +370,43 @@ export async function distributeDusdToContracts(
   const evm = cli.evm()!;
   const signer = await evm.getSigner(emissionsAddrErc55.value);
 
-  const lockBotContract_1Y = new ethers.Contract(
+  const lockBotContract1y = new ethers.Contract(
     evmAddr1,
     lockBotAbi,
     signer,
   );
-  const lockBotContract_2Y = new ethers.Contract(
+  const lockBotContract2y = new ethers.Contract(
     evmAddr2,
     lockBotAbi,
     signer,
   );
 
-  const cx_DUSD = evmDusdContract.connect(signer) as ethers.Contract;
-  const cx_1Y = lockBotContract_1Y.connect(signer) as ethers.Contract;
-  const cx_2Y = lockBotContract_2Y.connect(signer) as ethers.Contract;
+  const cxDusd = evmDusdContract.connect(signer) as ethers.Contract;
+  const cxLocks1y = lockBotContract1y.connect(signer) as ethers.Contract;
+  const cxLocks2y = lockBotContract2y.connect(signer) as ethers.Contract;
 
   console.log(
-    `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+    `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWeiBn}`,
   );
-  await cx_DUSD.approve(evmAddr1, BigInt(evmAddr1AmountInWei));
+  await cxDusd.approve(evmAddr1, evmAddr1AmountInWeiBn);
   console.log("done");
 
   console.log(
-    `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+    `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWeiBn}`,
   );
-  await cx_1Y.addRewards(BigInt(evmAddr1AmountInWei));
+  await cxLocks1y.addRewards(evmAddr1AmountInWeiBn);
   console.log("done");
 
   console.log(
-    `approving DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
+    `approving DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWeiBn}`,
   );
-  await cx_DUSD.approve(evmAddr2, BigInt(evmAddr2AmountInWei));
+  await cxDusd.approve(evmAddr2, evmAddr2AmountInWeiBn);
   console.log("done");
 
   console.log(
-    `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
+    `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWeiBn}`,
   );
-  await cx_2Y.addRewards(BigInt(evmAddr2AmountInWei));
+  await cxLocks2y.addRewards(evmAddr2AmountInWeiBn);
   console.log("done");
 
   return true;

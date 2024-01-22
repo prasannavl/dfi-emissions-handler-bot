@@ -40,10 +40,13 @@ DFI emissions handler bot
 
 ## TODOs
 
-- Change all `number` in `req.ts` into `bigint` and make json serialize it as
-  string.
-  - Alternatively use a string directly if easier.
+- Remove the use of floats for amount.
+- Note: It's used in areas where we pass to DFI / BTC CLI. This doesn't accept
+  beyond 8 decimal precision. It will throw an error.
 - Currently, will result in loss of precision, but the used methods for the bot
-  serialize them with a `toFixed(0)` or `toFixed(8)` as needed (Eg:
-  `PoolSwapArgs` goes through `makeSerializable` that's use `toFixed(8)` to
-  round it.
+  serialize them with `toFixed(8)` as needed (Eg: `PoolSwapArgs` goes through
+  `makeSerializable` that's use `toFixed(8)` to round it.
+- If this is too large to be expressible and returns and exp output, this will
+  fail as they are methods that can't handle more precision on the BTC side.
+- Rest are floored on multiply / divide on bigints. This can be switched to
+  bigdecimals.
