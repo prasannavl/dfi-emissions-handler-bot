@@ -16,6 +16,7 @@ import {
 } from "./req.ts";
 import { GetTokenBalancesResponseDecoded } from "./resp.ts";
 import dst20Abi from "./data/dst20.abi.json" with { type: "json" };
+import lockBotAbi from "./data/DUSDBonds.abi.json" with { type: "json" };
 import { Amount } from "./common.ts";
 
 export class ChainSteps {
@@ -349,18 +350,31 @@ export async function distributeDusdToContracts(
   // Seems to have it's own addRewards method. Will need to add to that instead
   // of a simple transfer.
 
+  const lockBotContract_1Y = new ethers.Contract(
+    evmAddr1,
+    lockBotAbi,
+    cli.evm()!,
+  );
+  const lockBotContract_2Y = new ethers.Contract(
+    evmAddr2,
+    lockBotAbi,
+    cli.evm()!,
+  );
+
   const evm = cli.evm()!;
   const signer = await evm.getSigner(emissionsAddrErc55.value);
-  const cx = evmDusdContract.connect(signer) as ethers.Contract;
+  const cx_1Y = lockBotContract_1Y.connect(signer) as ethers.Contract;
+  const cx_2Y = lockBotContract_2Y.connect(signer) as ethers.Contract;
 
   console.log(
     `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
-  await cx.transfer(evmAddr1, BigInt(evmAddr1AmountInWei));
+  await cx_1Y.addRewards(BigInt(evmAddr1AmountInWei));
   console.log(
     `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
-  await cx.transfer(evmAddr2, BigInt(evmAddr2AmountInWei));
+  await cx_2Y.addRewards(BigInt(evmAddr2AmountInWei));
   console.log("transfer domain of dusd completed");
+  
   return true;
 }
