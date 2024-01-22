@@ -85,7 +85,7 @@ async function reset(cli: DfiCli, envOpts: EnvOpts) {
   Deno.exit(0);
 }
 
-async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
+export async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
   const h = await cli.getBlockHeight();
   const ctx = await createContext(cli, envOpts, h, 0);
 
@@ -138,8 +138,6 @@ async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
   // Seems to have it's own addRewards method. Will need to add to that instead
   // of a simple transfer.
 
-
-
   const evm = cli.evm()!;
   const signer = await evm.getSigner(emissionsAddrErc55.value);
 
@@ -154,14 +152,28 @@ async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
     signer,
   );
 
+  const cx_DUSD = evmDusdContract.connect(signer) as ethers.Contract;
+  const cx_1Y = lockBotContract_1Y.connect(signer) as ethers.Contract;
+  const cx_2Y = lockBotContract_2Y.connect(signer) as ethers.Contract;
+  
+  console.log(
+    `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+  );
+  await cx_DUSD.approve(evmAddr1, BigInt(evmAddr1AmountInWei));
 
   console.log(
     `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
-  await lockBotContract_1Y.addRewards(BigInt(evmAddr1AmountInWei));
+  await cx_1Y.addRewards(BigInt(evmAddr1AmountInWei));
+
+  console.log(
+    `approving DUSD to contract 2: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+  );
+  await cx_DUSD.approve(evmAddr2, BigInt(evmAddr1AmountInWei));
+
   console.log(
     `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
-  await lockBotContract_2Y.addRewards(BigInt(evmAddr2AmountInWei));
+  await cx_2Y.addRewards(BigInt(evmAddr2AmountInWei));
   console.log("transfer domain of dusd completed");
 }

@@ -363,14 +363,29 @@ export async function distributeDusdToContracts(
     signer,
   );
 
+  const cx_DUSD = evmDusdContract.connect(signer) as ethers.Contract;
+  const cx_1Y = lockBotContract_1Y.connect(signer) as ethers.Contract;
+  const cx_2Y = lockBotContract_2Y.connect(signer) as ethers.Contract;
+  
+  console.log(
+    `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+  );
+  await cx_DUSD.approve(evmAddr1, BigInt(evmAddr1AmountInWei));
+
   console.log(
     `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
-  await lockBotContract_1Y.addRewards(BigInt(evmAddr1AmountInWei));
+  await cx_1Y.addRewards(BigInt(evmAddr1AmountInWei));
+
+  console.log(
+    `approving DUSD to contract 2: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+  );
+  await cx_DUSD.approve(evmAddr2, BigInt(evmAddr1AmountInWei));
+
   console.log(
     `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
-  await lockBotContract_2Y.addRewards(BigInt(evmAddr2AmountInWei));
+  await cx_2Y.addRewards(BigInt(evmAddr2AmountInWei));
   console.log("transfer domain of dusd completed");
   
   return true;
