@@ -281,7 +281,7 @@ export async function transferDomainDusdToErc55(
       emissionsAddrErc55,
       TransferDomainType.Dvm,
       TransferDomainType.Evm,
-      nonce + 1,
+      nonce,
     ),
   );
 
