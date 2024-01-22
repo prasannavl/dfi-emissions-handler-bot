@@ -2,9 +2,9 @@
 
 DFI emissions handler bot
 
-### Dev
+## Dev
 
-#### Steps
+### Steps
 
 - Clone repo
 - The only pre-requisite is [deno](https://deno.com).
@@ -12,14 +12,14 @@ DFI emissions handler bot
 - Run tasks below as needed.
 - For all options and defaults see `opts.ts`
 
-#### Tasks
+### Tasks
 
 - `deno task run`- single execution of the program
 - `deno task compile` - to get a single deployable binary
 - `deno fmt` - fmt code before checking in
 - `deno task dev` - for reloading dev
 
-### Notes
+## Notes
 
 - All the logic is contained in `main.ts` and `impl.ts`
   - Everything is just the framework for setting things up. 
@@ -36,10 +36,11 @@ DFI emissions handler bot
 - Some eth* calls are baked in for quick testing only. Prefer ethers js instead
   to avoid precision loss.
 
-### TODOs
+## TODOs
 
 - Change all `number` in `req.ts` into `bigint` and make json serialize it as string.
   - Alternatively use a string directly if easier.
 - Currently, will result in loss of precision, but the used methods for the bot serialize them
   with a `toFixed(0)` or `toFixed(8)` as needed (Eg: `PoolSwapArgs` goes through 
   `makeSerializable` that's use `toFixed(8)` to round it.
+
