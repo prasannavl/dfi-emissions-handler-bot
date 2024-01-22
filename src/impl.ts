@@ -378,9 +378,9 @@ export async function distributeDusdToContracts(
   await cx_1Y.addRewards(BigInt(evmAddr1AmountInWei));
 
   console.log(
-    `approving DUSD to contract 2: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+    `approving DUSD to contract 2: ${evmAddr1}: ${evmAddr2AmountInWei}`,
   );
-  await cx_DUSD.approve(evmAddr2, BigInt(evmAddr1AmountInWei));
+  await cx_DUSD.approve(evmAddr2, BigInt(evmAddr2AmountInWei));
 
   console.log(
     `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
