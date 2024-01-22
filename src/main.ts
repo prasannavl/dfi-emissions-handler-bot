@@ -20,6 +20,8 @@ import {
   transferDomainDusdToErc55,
 } from "./impl.ts";
 
+import { test } from "./test.ts";
+
 async function main() {
   const cli = new DfiCli(null, "-testnet");
   console.log(`cli: ${cli.path} ${cli.args.join(" ")}`);
@@ -34,6 +36,10 @@ async function main() {
 
   const { runIntervalMod, startBlock, endBlock, evmJsonRpc } = envOpts;
   cli.setEvmProvider(new ethers.JsonRpcProvider(evmJsonRpc));
+
+  // Test method to intercept and exit
+  // Uncomment to test small units
+  await test(cli, envOpts);
 
   cli.addEachBlockEvent(async (height) => {
     const forceStart = resolveForceStart(envOpts);

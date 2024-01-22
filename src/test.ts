@@ -26,10 +26,11 @@ import { TransferDomainArgs, TransferDomainType } from "./req.ts";
 import { GetTokenBalancesResponseDecoded } from "./resp.ts";
 import dst20Abi from "./data/dst20.abi.json" with { type: "json" };
 
-async function test(cli: DfiCli, envOpts: EnvOpts) {
+export async function test(cli: DfiCli, envOpts: EnvOpts) {
   // await seed(cli, envOpts);
   // await reset(cli, envOpts);
   await bespoke(cli, envOpts);
+  Deno.exit(0);
 }
 
 async function seed(cli: DfiCli, envOpts: EnvOpts) {
@@ -51,7 +52,6 @@ async function seed(cli: DfiCli, envOpts: EnvOpts) {
     ),
   );
   await cli.waitForTx(tx2);
-  Deno.exit(0);
 }
 
 async function reset(cli: DfiCli, envOpts: EnvOpts) {
@@ -91,7 +91,7 @@ async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
   const { evmAddr1, evmAddr2, evmAddr1Share } = envOpts;
   const { emissionsAddr, emissionsAddrErc55, getEvmDusdContract } = ctx;
 
-  const v = BigInt(Amount.fromUnit(20).wei().toFixed(0));
+  const v = BigInt(Amount.fromUnit(5).wei().toFixed(0));
   const evmAddr1Amount = v *
     BigInt(Amount.fromUnit(evmAddr1Share).wei().toFixed(0));
   const evmAddr2Amount = v - evmAddr1Amount;
@@ -114,6 +114,4 @@ async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
   console.log(`transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2Amount}`);
   await evmDusdContract.transfer(evmAddr2, evmAddr2Amount);
   console.log("transfer domain of dusd completed");
-
-  Deno.exit(0);
 }
