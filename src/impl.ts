@@ -184,19 +184,20 @@ export function initialSanityChecks(
 ) {
   const {
     envOpts: { feeReserveAmount },
-    balanceTokensInit,
+    balanceTokensInitDusd,
     dfiToSwapForDiffBlocks,
+    state: { balanceTokensDfi }
   } = ctx;
   // Sanity checks
-  const dfiTokenBalance = balanceTokensInit["DFI"] || 0;
+  const dfiTokenBalance = balanceTokensDfi;
   if (dfiTokenBalance < feeReserveAmount) {
     console.log(`DFI token balances too low. skipping`);
     return false;
   }
-  const dusdTokenBalanceStart = balanceTokensInit["DUSD"] || 0;
+  const dusdTokenBalanceStart = balanceTokensInitDusd;
   if (dusdTokenBalanceStart > 1000) {
     console.log(
-      `DUSD starting balance too high. skipping for manual verification`,
+      `DUSD starting bal (${dusdTokenBalanceStart}) too high. skip for manual verification`,
     );
     return false;
   }
