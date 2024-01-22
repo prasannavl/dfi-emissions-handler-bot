@@ -145,8 +145,8 @@ export function dst20TokenIdToAddress(tokenId: number): Address {
 export function patchConsoleLogWithTime() {
   const origLog = console.log;
   Object.defineProperty(console, "log", {
-    get: function () { 
-      return Function.prototype.bind.call(origLog, console, new Date()); 
-    }
+    get: function () {
+      return Function.prototype.bind.call(origLog, console, new Date());
+    },
   });
 }

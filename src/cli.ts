@@ -11,15 +11,13 @@ import {
 } from "./common.ts";
 import {
   AccountToAccountArgs,
+  AccountToUtxosArgs,
   AddressMapKind,
   AddressType,
-  SendTokensToAddressArgs,
-} from "./req.ts";
-import {
-  AccountToUtxosArgs,
   EvmTxArgs,
   PoolSwapArgs,
   SendToAddressArgs,
+  SendTokensToAddressArgs,
   TransferDomainArgs,
 } from "./req.ts";
 import {

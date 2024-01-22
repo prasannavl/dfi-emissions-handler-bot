@@ -2,13 +2,7 @@
 /// <reference lib="deno.unstable" />
 
 import { DfiCli, ethers } from "./cli.ts";
-import {
-  Address,
-  Amount,
-  BlockHeight,
-  dst20TokenIdToAddress,
-  TokenAmount,
-} from "./common.ts";
+import { BlockHeight } from "./common.ts";
 import { EnvOpts, loadEnvOptions } from "./opts.ts";
 import {
   ChainSteps,
@@ -38,7 +32,10 @@ async function main() {
   console.log(envOpts);
 
   const { runIntervalMod, startBlock, endBlock, evmJsonRpc } = envOpts;
+
+  console.log(`create evm rpc provider for: ${evmJsonRpc}`);
   cli.setEvmProvider(new ethers.JsonRpcProvider(evmJsonRpc));
+  console.log(`evm provider set`);
 
   // Test method to intercept and exit
   // Uncomment to test small units

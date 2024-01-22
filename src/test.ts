@@ -59,26 +59,26 @@ async function reset(cli: DfiCli, envOpts: EnvOpts) {
   const h = await cli.getBlockHeight();
   const ctx = await createContext(cli, envOpts, h, 0);
   const { emissionsAddr, emissionsAddrErc55 } = ctx;
-    // const tx = await cli.transferDomain(
-    //   new TransferDomainArgs(
-    //     TokenAmount.from(150, "DUSD"),
-    //     emissionsAddrErc55,
-    //     emissionsAddr,
-    //     TransferDomainType.Evm,
-    //     TransferDomainType.Dvm,
-    //   ),
-    // );
-    // await cli.waitForTx(tx);
-    const dusdbal = ctx.balanceTokensInitDusd;
-    const tx2 = await cli.poolSwap(
-      new PoolSwapArgs(
-        emissionsAddr,
-        "DUSD",
-        "DFI",
-        dusdbal,
-      ),
-    );
-    await cli.waitForTx(tx2);
+  // const tx = await cli.transferDomain(
+  //   new TransferDomainArgs(
+  //     TokenAmount.from(150, "DUSD"),
+  //     emissionsAddrErc55,
+  //     emissionsAddr,
+  //     TransferDomainType.Evm,
+  //     TransferDomainType.Dvm,
+  //   ),
+  // );
+  // await cli.waitForTx(tx);
+  const dusdbal = ctx.balanceTokensInitDusd;
+  const tx2 = await cli.poolSwap(
+    new PoolSwapArgs(
+      emissionsAddr,
+      "DUSD",
+      "DFI",
+      dusdbal,
+    ),
+  );
+  await cli.waitForTx(tx2);
 
   // const t = await cli.sendUtxosFrom(emissionsAddr, emissionsAddr, 10);
   // await cli.waitForTx(t);
@@ -155,7 +155,7 @@ export async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
   const cx_DUSD = evmDusdContract.connect(signer) as ethers.Contract;
   const cx_1Y = lockBotContract_1Y.connect(signer) as ethers.Contract;
   const cx_2Y = lockBotContract_2Y.connect(signer) as ethers.Contract;
-  
+
   console.log(
     `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );

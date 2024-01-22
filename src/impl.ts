@@ -347,7 +347,7 @@ export async function distributeDusdToContracts(
   // Move DUSD DST20 to the smart contracts
 
   // https://github.com/kuegi/dusd-lock-bot/blob/main/bot/DUSDLockRewards.ts
-  // Seems to have it's own addRewards method. 
+  // Seems to have it's own addRewards method.
 
   const evm = cli.evm()!;
   const signer = await evm.getSigner(emissionsAddrErc55.value);
@@ -366,7 +366,7 @@ export async function distributeDusdToContracts(
   const cx_DUSD = evmDusdContract.connect(signer) as ethers.Contract;
   const cx_1Y = lockBotContract_1Y.connect(signer) as ethers.Contract;
   const cx_2Y = lockBotContract_2Y.connect(signer) as ethers.Contract;
-  
+
   console.log(
     `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
@@ -387,6 +387,6 @@ export async function distributeDusdToContracts(
   );
   await cx_2Y.addRewards(BigInt(evmAddr2AmountInWei));
   console.log("transfer domain of dusd completed");
-  
+
   return true;
 }

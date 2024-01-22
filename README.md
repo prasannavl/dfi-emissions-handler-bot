@@ -15,7 +15,7 @@ DFI emissions handler bot
 ### Tasks
 
 - `deno task run`- single execution of the program
-- `deno task compile` - to get a single deployable binary
+- `deno task build` - to get a single deployable binary
 - `deno fmt` - fmt code before checking in
 - `deno task dev` - for reloading dev
 
