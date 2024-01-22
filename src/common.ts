@@ -12,25 +12,21 @@ export class TokenAmount extends ValueType<string> {
   private _token;
   private _amount;
 
-  constructor(amountWithToken: string) {
-    super(amountWithToken);
-    const res = amountWithToken.split("@");
+  constructor(tokenAmountStr: string) {
+    super(tokenAmountStr);
+    const res = tokenAmountStr.split("@");
     if (res.length != 2) {
-      this._throwInvalidFormatError();
+      TokenAmount._throwInvalidFormatError();
     }
     const [amount, token] = [parseFloat(res[0]), res[1]];
-    if (token.length < 1 || token.length > 8) {
-      this._throwInvalidFormatError();
-    }
-    if (!Number.isFinite(amount) && amount < 0) {
-      this._throwInvalidFormatError();
-    }
+    TokenAmount._validate(token, amount);
     this._token = token;
     this._amount = amount;
     this.value = this.toString();
   }
 
   static from(amount: number, token: string) {
+    TokenAmount._validate(token, amount);
     const res = Object.create(this.prototype);
     res._token = token;
     res._amount = amount;
@@ -38,7 +34,16 @@ export class TokenAmount extends ValueType<string> {
     return res;
   }
 
-  private _throwInvalidFormatError() {
+  private static _validate(token: string, amount: number) {
+    if (token.length < 1 || token.length > 8) {
+      this._throwInvalidFormatError();
+    }
+    if (!Number.isFinite(amount) && amount < 0) {
+      this._throwInvalidFormatError();
+    }
+  }
+
+  private static _throwInvalidFormatError() {
     throw new Error("invalid token value format");
   }
 
@@ -49,6 +54,9 @@ export class TokenAmount extends ValueType<string> {
     return this._amount;
   }
   toString() {
+    // Note that this format is only used with DFI RPC.
+    // DFI RPC will reject any amount with more than 8 decimal places or
+    // an exponential value that's too large to be expressible in fixed format.
     return this.amount().toFixed(8) + "@" + this.token();
   }
 }
@@ -104,12 +112,20 @@ export class Amount {
     return this._wei;
   }
 
+  weiAsBigInt() {
+    return BigInt(Math.floor(this._wei));
+  }
+
   gwei() {
     return this._wei * 1e-9;
   }
 
   sats() {
     return this._wei * 1e-10;
+  }
+
+  satsAsBigInt() {
+    return BigInt(Math.floor(this.sats()));
   }
 
   unit() {

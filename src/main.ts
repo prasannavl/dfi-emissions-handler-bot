@@ -47,19 +47,22 @@ async function main() {
     if (height.value > startBlock && height.value < endBlock) {
       console.log("height", height);
 
-      const updateState = async () => {
+      const markLastUpdated = async () => {
         lastRunBlock = height.value;
         await kv.set(["lastRunBlock"], lastRunBlock);
       };
 
       const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
+      // Note that we don't particularly need the mod == 0 check, since the
+      // diffBlocks is enough, but we still add it to normalize drifts
+      // over a long enough runtime as sequences will span many blocks.
       if (
         forceStart ||
         (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0)
       ) {
         // Run if we've either skipped in-between or during the mod period
         await runEmissionSequence(cli, envOpts, height, diffBlocks);
-        await updateState();
+        await markLastUpdated();
       }
     }
   });
@@ -104,13 +107,15 @@ async function runEmissionSequence(
   // TODO: Add burn in the end to burn rest.
 
   chain.add(async () => {
-    if (!(await transferDomainDusdToErc55(cli, ctx))) {
+    const res = await transferDomainDusdToErc55(cli, ctx);
+    if (!res) {
       throw new Error("failed on transfer domain phase");
     }
   });
 
   chain.add(async () => {
-    if (!await distributeDusdToContracts(cli, ctx)) {
+    const res = await distributeDusdToContracts(cli, ctx);
+    if (!res) {
       throw new Error("failed on distribute DUSD phase");
     }
   });

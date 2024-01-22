@@ -19,16 +19,35 @@ import dst20Abi from "./data/DST20.abi.json" with { type: "json" };
 import lockBotAbi from "./data/DUSDBonds.abi.json" with { type: "json" };
 import { Amount } from "./common.ts";
 
+class ChainStepCancellationToken {
+  private _isCancelled = false;
+  isCancelled() {
+    return this._isCancelled;
+  }
+  cancel() {
+    this._isCancelled = true;
+  }
+}
+
+type ChainStepFunc = (cancelToken: ChainStepCancellationToken) => Promise<void>;
+
+// This is used to chain many steps together. Primarily so that
+// we can keep track of prev state on execution and print out prev
+// and next states so it's helpful when a failure happens but
+// don't add noise otherwise.
+//
+// Passes a cancellation token along to be able to cancel.
 export class ChainSteps {
-  private funcs: Array<() => Promise<void>> = [];
+  private funcs: ChainStepFunc[] = [];
   constructor(public ctx: Awaited<ReturnType<typeof createContext>>) {}
 
-  add(func: () => Promise<void>) {
+  add(func: ChainStepFunc) {
     this.funcs.push(func);
   }
 
   async run() {
     let lastCtxData = "";
+    const cancelToken = new ChainStepCancellationToken();
     console.log("sequence chain start");
     let i = 0;
     for (const func of this.funcs) {
@@ -38,11 +57,15 @@ export class ChainSteps {
           this.ctx,
           (_, v) => typeof v === "bigint" ? v.toString() : v,
         );
-        await func();
+        await func(cancelToken);
+        if (cancelToken.isCancelled()) {
+          console.log("sequence chain cancelled");
+          return;
+        }
       } catch (e) {
         console.log("sequence chain failure");
         console.log("previous-ctx");
-        console.log(lastCtxData);
+        console.dir(JSON.parse(lastCtxData));
         console.log("current-ctx");
         console.dir(this.ctx);
         throw e;
@@ -153,7 +176,7 @@ export async function ensureFeeReserves(
       new AccountToUtxosArgs(emissionsAddr, emissionsAddr, feeReserveAmount),
     );
     await cli.waitForTx(tx);
-    console.log(`done`);
+    console.log("done");
 
     state.balanceTokensDfi -= feeReserveAmount;
     state.currentHeight = await cli.getBlockHeight();
@@ -163,7 +186,12 @@ export async function ensureFeeReserves(
   // Needed for fees in EVM
   const { balanceEvmInitDfi, emissionsAddrErc55 } = ctx;
   if (balanceEvmInitDfi < feeReserveAmount) {
-    console.log(`refill EVM DFI from account for: ${feeReserveAmount}`);
+    const nonce = await cli.evm()!.getTransactionCount(
+      emissionsAddrErc55.value,
+    );
+    console.log(
+      `refill EVM DFI from account for: ${feeReserveAmount} with transferdomain (nonce: ${nonce})`,
+    );
     const tx = await cli.transferDomain(
       new TransferDomainArgs(
         TokenAmount.from(feeReserveAmount, "DFI"),
@@ -171,6 +199,7 @@ export async function ensureFeeReserves(
         emissionsAddrErc55,
         TransferDomainType.Dvm,
         TransferDomainType.Evm,
+        nonce,
       ),
     );
     await cli.waitForTx(tx);
@@ -195,19 +224,23 @@ export function initialSanityChecks(
   // Sanity checks
   const dfiTokenBalance = balanceTokensDfi;
   if (dfiTokenBalance < feeReserveAmount) {
-    console.log(`DFI token balances too low. skipping`);
-    return false;
-  }
-  const dusdTokenBalanceStart = balanceTokensInitDusd;
-  if (dusdTokenBalanceStart > 1000) {
-    console.log(
-      `DUSD starting bal (${dusdTokenBalanceStart}) too high. skip for manual verification`,
-    );
+    console.log("DFI token balances too low. skipping");
     return false;
   }
 
+  // We disable this check until we shift to getaccount to allow multi-key
+  // nodes to work
+  //
+  // const dusdTokenBalanceStart = balanceTokensInitDusd;
+  // if (dusdTokenBalanceStart > 1000) {
+  //   console.log(
+  //     `DUSD starting bal (${dusdTokenBalanceStart}) too high. skip for manual verification`,
+  //   );
+  //   return false;
+  // }
+
   if (dfiToSwapForDiffBlocks <= 0) {
-    console.log(`no DFI to swap`);
+    console.log("no DFI to swap");
     return false;
   }
   return true;
@@ -273,7 +306,7 @@ export async function transferDomainDusdToErc55(
     state,
   } = ctx;
   if (!dUsdToTransfer || dUsdToTransfer <= 0) {
-    console.log("no DUSD to transfer, skipping");
+    console.log("no DUSD to transfer, aborting");
     return false;
   }
 
@@ -306,9 +339,8 @@ export async function distributeDusdToContracts(
   const { dUsdToTransfer } = ctx.state.postSwapCalc;
 
   if (!dUsdToTransfer || dUsdToTransfer <= 0) {
-    // TODO(later): Change the checks to be done in EVM land instead and not use postSwapCalc
-    // state at all, and instead extract from EVM land.
-    console.log("no DUSD to transfer, skipping");
+    // TODO(later): Change the checks to instead extract from EVM land.
+    console.log("no DUSD to transfer, aborting");
     return false;
   }
 
@@ -319,11 +351,11 @@ export async function distributeDusdToContracts(
   );
 
   const evmDusdDiff = balanceEvmDusd - balanceEvmInitDusd;
-  // Note, we're still converting a float. So, can expect this
-  // to be off and fail. Just until the rest of the parts
-  // are moved off float.
+  // We normalize this to sats to ensure that this is a safe comparison.
+  // Due to the nature of floats, the last sat can still fall in either place
+  // so, we ignore 1 sat diff.
   if (
-    evmDusdDiff - BigInt(Math.floor(Amount.fromUnit(dUsdToTransfer).wei()) > 1)
+    evmDusdDiff / BigInt(1e10) - Amount.fromUnit(dUsdToTransfer).satsAsBigInt() > 1
   ) {
     console.log(
       "DUSD mismatch between transfer and init balance; manual verification required",
@@ -353,14 +385,11 @@ export async function distributeDusdToContracts(
   console.log(`evmAddr1Amount: ${evmAddr1Amount}`);
   console.log(`evmAddr2Amount: ${evmAddr2Amount}`);
 
-  const evmAddr1AmountInWei = Math.floor(Amount.fromUnit(evmAddr1Amount).wei());
-  const evmAddr1AmountInWeiBn = BigInt(evmAddr1AmountInWei);
+  const evmAddr1AmountInWei = Amount.fromUnit(evmAddr1Amount).weiAsBigInt();
+  const evmAddr2AmountInWei = Amount.fromUnit(evmAddr2Amount).weiAsBigInt();
 
-  const evmAddr2AmountInWei = Math.floor(Amount.fromUnit(evmAddr2Amount).wei());
-  const evmAddr2AmountInWeiBn = BigInt(evmAddr2AmountInWei);
-
-  console.log(`evmAddr1AmountInWei: ${evmAddr1AmountInWeiBn}`);
-  console.log(`evmAddr2AmountInWei: ${evmAddr2AmountInWeiBn}`);
+  console.log(`evmAddr1AmountInWei: ${evmAddr1AmountInWei}`);
+  console.log(`evmAddr2AmountInWei: ${evmAddr2AmountInWei}`);
 
   // Move DUSD DST20 to the smart contracts
 
@@ -386,27 +415,27 @@ export async function distributeDusdToContracts(
   const cxLocks2y = lockBotContract2y.connect(signer) as ethers.Contract;
 
   console.log(
-    `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWeiBn}`,
+    `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
-  await cxDusd.approve(evmAddr1, evmAddr1AmountInWeiBn);
+  await cxDusd.approve(evmAddr1, evmAddr1AmountInWei);
   console.log("done");
 
   console.log(
-    `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWeiBn}`,
+    `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
-  await cxLocks1y.addRewards(evmAddr1AmountInWeiBn);
+  await cxLocks1y.addRewards(evmAddr1AmountInWei);
   console.log("done");
 
   console.log(
-    `approving DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWeiBn}`,
+    `approving DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
-  await cxDusd.approve(evmAddr2, evmAddr2AmountInWeiBn);
+  await cxDusd.approve(evmAddr2, evmAddr2AmountInWei);
   console.log("done");
 
   console.log(
-    `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWeiBn}`,
+    `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
-  await cxLocks2y.addRewards(evmAddr2AmountInWeiBn);
+  await cxLocks2y.addRewards(evmAddr2AmountInWei);
   console.log("done");
 
   return true;

@@ -296,7 +296,10 @@ export class DfiCli {
     return;
   }
 
-  async waitForTx(args: TxHash): Promise<BlockHeight> {
+  async waitForTx(args: TxHash, log = true): Promise<BlockHeight> {
+    const writeText = (x: string) =>
+      Deno.stdout.writeSync(new TextEncoder().encode(x));
+    log && writeText(`wait for tx: ${args.value}`);
     while (true) {
       try {
         const tx = await this.getTransaction(args);
@@ -304,9 +307,10 @@ export class DfiCli {
           new BlockHash(tx.blockhash),
           1,
         )) as GetBlockResponseV1).height;
+        log && writeText("\n");
         return new BlockHeight(height);
       } catch (_) {}
-      console.debug(`wait for tx: ${args.value}`);
+      log && writeText(".");
       await this.waitForBlock();
     }
   }
