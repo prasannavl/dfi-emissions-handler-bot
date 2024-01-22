@@ -141,3 +141,12 @@ export function dst20TokenIdToAddress(tokenId: number): Address {
   const str = `0xff${hexStr.padStart(38, "0")}`;
   return new Address(str);
 }
+
+export function patchConsoleLogWithTime() {
+  const origLog = console.log;
+  Object.defineProperty(console, "log", {
+    get: function () { 
+      return Function.prototype.bind.call(origLog, console, new Date()); 
+    }
+  });
+}
