@@ -86,7 +86,7 @@ async function runEmissionSequence(
   const updateDebugContext = () => {
     lastContextData = JSON.stringify(
       ctx,
-      (key, value) => typeof value === "bigint" ? value.toString() : value, // return everything else unchanged
+      (_, v) => typeof v === "bigint" ? v.toString() : v,
     );
   };
   updateDebugContext();

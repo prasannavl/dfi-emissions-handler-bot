@@ -289,6 +289,13 @@ export async function distributeDusdToContracts(
     );
   }
 
+  // TODO(later): We don't need to just move the diff. Since this is the only
+  // bot that does the move, we can just move the entire balance.
+  //
+  // This way we don't care if we swapped or not, or precision loss.
+  // We just move everything that's there as DUSD DST20 to the contracts.
+  // But taking a safer approach first to ensure everything works well for testing.
+
   // Build EVMTx for distributing to EVM contract addresses
   // We don't actually use the evmAddr2Share for now, since this helps us
   // redirect rounding errors to share 2.
