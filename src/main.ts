@@ -58,7 +58,7 @@ async function main() {
       const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
 
       // ===== Start: Test items ======
-      await runEmissionSequence(cli, envOpts, height, 1);      
+      // await runEmissionSequence(cli, envOpts, height, 1);
       // ====== End: Test items ========
 
       if (
@@ -66,7 +66,7 @@ async function main() {
         (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0)
       ) {
         // Run if we've either skipped in-between or during the mod period
-        // runEmissionSequence(cli, envOpts, height, diffBlocks);
+        await runEmissionSequence(cli, envOpts, height, diffBlocks);
         await updateState();
       }
     }
