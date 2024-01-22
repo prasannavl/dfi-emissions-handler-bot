@@ -153,6 +153,8 @@ export async function ensureFeeReserves(
       new AccountToUtxosArgs(emissionsAddr, emissionsAddr, feeReserveAmount),
     );
     await cli.waitForTx(tx);
+    console.log(`done`);
+
     state.balanceTokensDfi -= feeReserveAmount;
     state.currentHeight = await cli.getBlockHeight();
   }
@@ -172,6 +174,8 @@ export async function ensureFeeReserves(
       ),
     );
     await cli.waitForTx(tx);
+    console.log("done");
+
     state.balanceTokensDfi -= feeReserveAmount;
     state.balanceEvmDfi = await cli.evm()!.getBalance(emissionsAddrErc55.value);
     state.currentHeight = await cli.getBlockHeight();
@@ -186,7 +190,7 @@ export function initialSanityChecks(
     envOpts: { feeReserveAmount },
     balanceTokensInitDusd,
     dfiToSwapForDiffBlocks,
-    state: { balanceTokensDfi }
+    state: { balanceTokensDfi },
   } = ctx;
   // Sanity checks
   const dfiTokenBalance = balanceTokensDfi;
@@ -231,7 +235,7 @@ export async function swapDfiToDusd(
   ss.swapHeight = await cli.waitForTx(tx);
   state.currentHeight = await cli.getBlockHeight();
 
-  console.log("swap completed");
+  console.log("done");
 }
 
 export async function makePostSwapCalc(
@@ -275,6 +279,9 @@ export async function transferDomainDusdToErc55(
 
   const nonce = await cli.evm()!.getTransactionCount(emissionsAddrErc55.value);
 
+  console.log(
+    `transfer domain: ${dUsdToTransfer} DUSD to EVM (nonce: ${nonce})`,
+  );
   const tx = await cli.transferDomain(
     new TransferDomainArgs(
       TokenAmount.from(dUsdToTransfer, "DUSD"),
@@ -287,8 +294,7 @@ export async function transferDomainDusdToErc55(
   );
 
   state.currentHeight = await cli.waitForTx(tx);
-
-  console.log("transfer domain of dusd completed");
+  console.log("done");
   return true;
 }
 
@@ -372,22 +378,25 @@ export async function distributeDusdToContracts(
     `approving DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
   await cx_DUSD.approve(evmAddr1, BigInt(evmAddr1AmountInWei));
+  console.log("done");
 
   console.log(
     `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
   );
   await cx_1Y.addRewards(BigInt(evmAddr1AmountInWei));
+  console.log("done");
 
   console.log(
     `approving DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
   await cx_DUSD.approve(evmAddr2, BigInt(evmAddr2AmountInWei));
+  console.log("done");
 
   console.log(
     `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
   );
   await cx_2Y.addRewards(BigInt(evmAddr2AmountInWei));
-  console.log("transfer domain of dusd completed");
+  console.log("done");
 
   return true;
 }

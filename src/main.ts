@@ -15,8 +15,12 @@ import {
   transferDomainDusdToErc55,
 } from "./impl.ts";
 
-import { test } from "./test.ts";
 import { patchConsoleLogWithTime } from "./common.ts";
+
+// TODO:
+//  - Add burn into the mix
+//  - Cleanup remaining floating point ops and switch to bigint
+//  - Switch to getaccount instead of gettokenbalances to be more specific
 
 async function main() {
   patchConsoleLogWithTime();
@@ -37,10 +41,6 @@ async function main() {
   cli.setEvmProvider(new ethers.JsonRpcProvider(evmJsonRpc));
   console.log(`evm provider set`);
 
-  // Test method to intercept and exit
-  // Uncomment to test small units
-  // await test(cli, envOpts);
-
   cli.addEachBlockEvent(async (height) => {
     const forceStart = resolveForceStart(envOpts);
 
@@ -53,11 +53,6 @@ async function main() {
       };
 
       const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
-
-      // ===== Start: Test items ======
-      // await runEmissionSequence(cli, envOpts, height, 1);
-      // ====== End: Test items ========
-
       if (
         forceStart ||
         (diffBlocks > runIntervalMod || height.value % runIntervalMod === 0)
@@ -69,6 +64,7 @@ async function main() {
     }
   });
 
+  console.log("running block event loop");
   await cli.runBlockEventLoop();
 }
 
