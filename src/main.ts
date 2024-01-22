@@ -11,7 +11,7 @@ import {
 } from "./common.ts";
 import { EnvOpts, loadEnvOptions } from "./opts.ts";
 import {
-ChainSteps,
+  ChainSteps,
   createContext,
   distributeDusdToContracts,
   ensureFeeReserves,

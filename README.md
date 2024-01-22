@@ -22,10 +22,12 @@ DFI emissions handler bot
 ## Notes
 
 - All the logic is contained in `main.ts` and `impl.ts`
-  - Everything is just the framework for setting things up. 
+  - Everything is just the framework for setting things up.
   - `DfiCli` proxies `defi-cli` and support for common items are built-in.
-  - `DfiCli.setEvmProvider` sets the ethers context for EVM RPC that can be accessed through `DfiCli.evm`
-  - `ethers` is also re-exported from `cli.ts` - so that you use the same version and mixed version conflicts.
+  - `DfiCli.setEvmProvider` sets the ethers context for EVM RPC that can be
+    accessed through `DfiCli.evm`
+  - `ethers` is also re-exported from `cli.ts` - so that you use the same
+    version and mixed version conflicts.
   - Use the re-exported ethers for interacting with the EVM.
 - Note: DO NOT use this for use-cases other than the intended ones just yet.
 - The bot uses double precision floating point for most ops, which will quickly
@@ -38,9 +40,10 @@ DFI emissions handler bot
 
 ## TODOs
 
-- Change all `number` in `req.ts` into `bigint` and make json serialize it as string.
+- Change all `number` in `req.ts` into `bigint` and make json serialize it as
+  string.
   - Alternatively use a string directly if easier.
-- Currently, will result in loss of precision, but the used methods for the bot serialize them
-  with a `toFixed(0)` or `toFixed(8)` as needed (Eg: `PoolSwapArgs` goes through 
-  `makeSerializable` that's use `toFixed(8)` to round it.
-
+- Currently, will result in loss of precision, but the used methods for the bot
+  serialize them with a `toFixed(0)` or `toFixed(8)` as needed (Eg:
+  `PoolSwapArgs` goes through `makeSerializable` that's use `toFixed(8)` to
+  round it.
