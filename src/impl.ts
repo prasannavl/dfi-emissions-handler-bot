@@ -333,12 +333,15 @@ export async function distributeDusdToContracts(
   // Build EVMTx for distributing to EVM contract addresses
   // We don't actually use the evmAddr2Share for now, since this helps us
   // redirect rounding errors to share 2.
-  const v = evmDusdDiff;
 
-  // TODO: Fix multiply.
-  const evmAddr1Amount = v *
-    BigInt(Amount.fromUnit(evmAddr1Share).wei().toFixed(0));
+  // TODO: Use evmDusdDiff for higher precision.
+  const v = dUsdToTransfer;
+
+  const evmAddr1Amount = v * evmAddr1Share;
   const evmAddr2Amount = v - evmAddr1Amount;
+
+  const evmAddr1AmountInWei = Amount.fromUnit(evmAddr1Amount).wei().toFixed(0);
+  const evmAddr2AmountInWei = Amount.fromUnit(evmAddr2Amount).wei().toFixed(0);
 
   // Move DUSD DST20 to the smart contracts
 
@@ -350,10 +353,14 @@ export async function distributeDusdToContracts(
   const signer = await evm.getSigner(emissionsAddrErc55.value);
   const cx = evmDusdContract.connect(signer) as ethers.Contract;
 
-  console.log(`transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1Amount}`);
-  await cx.transfer(evmAddr1, evmAddr1Amount);
-  console.log(`transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2Amount}`);
-  await cx.transfer(evmAddr2, evmAddr2Amount);
+  console.log(
+    `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+  );
+  await cx.transfer(evmAddr1, BigInt(evmAddr1AmountInWei));
+  console.log(
+    `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
+  );
+  await cx.transfer(evmAddr2, BigInt(evmAddr2AmountInWei));
   console.log("transfer domain of dusd completed");
   return true;
 }

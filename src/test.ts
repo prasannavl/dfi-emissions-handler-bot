@@ -89,34 +89,65 @@ async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
   const ctx = await createContext(cli, envOpts, h, 0);
 
   const { evmAddr1, evmAddr2, evmAddr1Share } = envOpts;
-  const { emissionsAddr, emissionsAddrErc55, getEvmDusdContract } = ctx;
 
-  // TODO: Fix multiply.
-  const v = BigInt(Amount.fromUnit(5).wei().toFixed(0));
-  const evmAddr1Amount = v *
-    BigInt(Amount.fromUnit(evmAddr1Share).wei().toFixed(0));
+  const { balanceEvmInitDusd, emissionsAddrErc55, getEvmDusdContract } = ctx;
+  const evmDusdContract = getEvmDusdContract();
+  const balanceEvmDusd: bigint = await evmDusdContract.balanceOf(
+    emissionsAddrErc55.value,
+  );
+
+  const dUsdToTransfer = 5;
+
+  const evmDusdDiff = balanceEvmDusd - balanceEvmInitDusd;
+  // Note, we're still converting a float. So, can expect this
+  // to be off and fail. Just until the rest of the parts
+  // are moved off float.
+  if (evmDusdDiff != BigInt(Amount.fromUnit(dUsdToTransfer).wei().toFixed(0))) {
+    console.log(
+      "DUSD mistmatch between transfer and init balance; manual verification required",
+    );
+    console.log(
+      `dUsdTransferred: ${dUsdToTransfer}; Diff in Contract: ${evmDusdDiff}`,
+    );
+  }
+
+  // TODO(later): We don't need to just move the diff. Since this is the only
+  // bot that does the move, we can just move the entire balance.
+  //
+  // This way we don't care if we swapped or not, or precision loss.
+  // We just move everything that's there as DUSD DST20 to the contracts.
+  // But taking a safer approach first to ensure everything works well for testing.
+
+  // Build EVMTx for distributing to EVM contract addresses
+  // We don't actually use the evmAddr2Share for now, since this helps us
+  // redirect rounding errors to share 2.
+
+  // TODO: Use evmDusdDiff for higher precision.
+  const v = dUsdToTransfer;
+
+  const evmAddr1Amount = v * evmAddr1Share;
   const evmAddr2Amount = v - evmAddr1Amount;
 
+  const evmAddr1AmountInWei = Amount.fromUnit(evmAddr1Amount).wei().toFixed(0);
+  const evmAddr2AmountInWei = Amount.fromUnit(evmAddr2Amount).wei().toFixed(0);
+
   // Move DUSD DST20 to the smart contracts
-
-  const evm = cli.evm()!;
-  const signer = await evm.getSigner(emissionsAddrErc55.value);
-  const dUsdToken = await cli.getToken("DUSD");
-
-  const evmDusdTokenDst20Addr = dst20TokenIdToAddress(dUsdToken.id);
-  const evmDusdContract = new ethers.Contract(
-    evmDusdTokenDst20Addr.value,
-    dst20Abi,
-    signer,
-  );
 
   // https://github.com/kuegi/dusd-lock-bot/blob/main/bot/DUSDLockRewards.ts
   // Seems to have it's own addRewards method. Will need to add to that instead
   // of a simple transfer.
 
-  console.log(`transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1Amount}`);
-  await evmDusdContract.transfer(evmAddr1, evmAddr1Amount);
-  console.log(`transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2Amount}`);
-  await evmDusdContract.transfer(evmAddr2, evmAddr2Amount);
+  const evm = cli.evm()!;
+  const signer = await evm.getSigner(emissionsAddrErc55.value);
+  const cx = evmDusdContract.connect(signer) as ethers.Contract;
+
+  console.log(
+    `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
+  );
+  await cx.transfer(evmAddr1, BigInt(evmAddr1AmountInWei));
+  console.log(
+    `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
+  );
+  await cx.transfer(evmAddr2, BigInt(evmAddr2AmountInWei));
   console.log("transfer domain of dusd completed");
 }
