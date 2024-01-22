@@ -27,3 +27,11 @@ DFI emissions handler bot
   for other things.
 - Some eth* calls are baked in for quick testing only. Prefer ethers js instead
   to avoid precision loss.
+
+### TODOs
+
+- Change all `number` in `req.ts` into `bigint` and make json serialize it as string.
+  - Alternatively use a string directly if easier.
+- Currently, will result in loss of precision, but the used methods for the bot serialize them
+  with a `toFixed(0)` or `toFixed(8)` as needed (Eg: `PoolSwapArgs` goes through 
+  `makeSerializable` that's use `toFixed(8)` to round it.
