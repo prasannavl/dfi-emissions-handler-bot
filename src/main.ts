@@ -39,7 +39,7 @@ async function main() {
 
   // Test method to intercept and exit
   // Uncomment to test small units
-  await test(cli, envOpts);
+  // await test(cli, envOpts);
 
   cli.addEachBlockEvent(async (height) => {
     const forceStart = resolveForceStart(envOpts);
@@ -55,7 +55,7 @@ async function main() {
       const diffBlocks = height.value - (Math.max(lastRunBlock, startBlock));
 
       // ===== Start: Test items ======
-      await runEmissionSequence(cli, envOpts, height, diffBlocks);
+      await runEmissionSequence(cli, envOpts, height, 1);
       // ====== End: Test items ========
 
       if (
@@ -88,45 +88,38 @@ async function runEmissionSequence(
 ) {
   console.log(`runSequence: ${height.value} ${diffBlocks}`);
   const ctx = await createContext(cli, envOpts, height, diffBlocks);
-  let lastContextData = "";
-  const updateDebugContext = () => {
-    lastContextData = JSON.stringify(
-      ctx,
-      (_, v) => typeof v === "bigint" ? v.toString() : v,
-    );
-  };
-  updateDebugContext();
-  console.dir(ctx);
+  const chain = new ChainSteps(ctx);
 
-  try {
+  chain.add(async () => {
     await ensureFeeReserves(cli, ctx);
-    updateDebugContext();
     if (!initialSanityChecks(cli, ctx)) {
       throw new Error("sanity checks failed");
     }
-    updateDebugContext();
+  });
+
+  chain.add(async () => {
     await swapDfiToDusd(cli, ctx);
-    updateDebugContext();
+  });
+
+  chain.add(async () => {
     await makePostSwapCalc(cli, ctx);
-    updateDebugContext();
-    // TODO: Add burn in the end to burn rest.
+  });
+
+  // TODO: Add burn in the end to burn rest.
+
+  chain.add(async () => {
     if (!(await transferDomainDusdToErc55(cli, ctx))) {
       throw new Error("failed on transfer domain phase");
     }
-    updateDebugContext();
+  });
+
+  chain.add(async () => {
     if (!await distributeDusdToContracts(cli, ctx)) {
       throw new Error("failed on distribute DUSD phase");
     }
-    console.log(ctx);
-    console.log("completed Sequence");
-  } catch (e) {
-    console.log("sequence failure.");
-    console.log("previous-ctx");
-    console.dir(lastContextData);
-    console.log("current-ctx");
-    console.dir(ctx);
-    throw e;
-  }
+  });
+
+  await chain.run();
 }
 
 main();

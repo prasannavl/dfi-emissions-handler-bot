@@ -18,6 +18,40 @@ import { GetTokenBalancesResponseDecoded } from "./resp.ts";
 import dst20Abi from "./data/dst20.abi.json" with { type: "json" };
 import { Amount } from "./common.ts";
 
+export class ChainSteps {
+  private funcs: Array<() => Promise<void>> = []
+  constructor(public ctx: Awaited<ReturnType<typeof createContext>>) { }
+
+  add(func: () => Promise<void>) {
+    this.funcs.push(func);
+  }
+
+  async run() {
+    let lastCtxData = "";
+    console.log("sequence chain start");
+    let i = 0;
+    for (const func of this.funcs) {
+      try {
+        if (i++ == 0) { console.dir(this.ctx); }
+        lastCtxData = JSON.stringify(
+          this.ctx,
+          (_, v) => typeof v === "bigint" ? v.toString() : v,
+        );
+        await func();
+      } catch (e) {
+        console.log("sequence chain failure");
+        console.log("previous-ctx");
+        console.log(lastCtxData);
+        console.log("current-ctx");
+        console.dir(this.ctx);
+        throw e;
+      }
+    }
+    console.dir(this.ctx);
+    console.log("sequence chain completed");
+  }
+}
+
 export async function createContext(
   cli: DfiCli,
   envOpts: EnvOpts,
@@ -300,6 +334,8 @@ export async function distributeDusdToContracts(
   // We don't actually use the evmAddr2Share for now, since this helps us
   // redirect rounding errors to share 2.
   const v = evmDusdDiff;
+
+  // TODO: Fix multiply. 
   const evmAddr1Amount = v *
     BigInt(Amount.fromUnit(evmAddr1Share).wei().toFixed(0));
   const evmAddr2Amount = v - evmAddr1Amount;

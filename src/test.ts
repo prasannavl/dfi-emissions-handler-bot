@@ -91,11 +91,12 @@ async function bespoke(cli: DfiCli, envOpts: EnvOpts) {
   const { evmAddr1, evmAddr2, evmAddr1Share } = envOpts;
   const { emissionsAddr, emissionsAddrErc55, getEvmDusdContract } = ctx;
 
+  // TODO: Fix multiply. 
   const v = BigInt(Amount.fromUnit(5).wei().toFixed(0));
   const evmAddr1Amount = v *
     BigInt(Amount.fromUnit(evmAddr1Share).wei().toFixed(0));
   const evmAddr2Amount = v - evmAddr1Amount;
-
+  
   // Move DUSD DST20 to the smart contracts
 
   const evm = cli.evm()!;
