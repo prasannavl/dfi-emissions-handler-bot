@@ -22,7 +22,7 @@ DFI emissions handler bot
 ## Notes
 
 - All the logic is contained in `main.ts` and `impl.ts`
-  - Everything is just the framework for setting things up.
+  - Everything else is just the framework scaffolds.
   - `DfiCli` proxies `defi-cli` and support for common items are built-in.
   - `DfiCli.setEvmProvider` sets the ethers context for EVM RPC that can be
     accessed through `DfiCli.evm`
@@ -42,11 +42,13 @@ DFI emissions handler bot
 
 - Remove the use of floats for amount.
 - Note: It's used in areas where we pass to DFI / BTC CLI. This doesn't accept
-  beyond 8 decimal precision. It will throw an error.
-- Currently, will result in loss of precision, but the used methods for the bot
-  serialize them with `toFixed(8)` as needed (Eg: `PoolSwapArgs` goes through
-  `makeSerializable` that's use `toFixed(8)` to round it.
-- If this is too large to be expressible and returns and exp output, this will
-  fail as they are methods that can't handle more precision on the BTC side.
-- Rest are floored on multiply / divide on bigints. This can be switched to
-  bigdecimals.
+  beyond 8 decimal precision and will throw an error anyway if `toFixed(8)`
+  can't represent this. Why it's safe-ish.
+- Currently the used methods for the bot serialize them with `toFixed(8)` as
+  needed (Eg: `PoolSwapArgs` goes through `makeSerializable` that's use
+  `toFixed(8)` to round it.
+- If this is too large to be expressible with `toFixed` and returns an
+  exponential output, this will fail as they are methods that can't handle more
+  precision on the BTC side. We don't use this for EVM.
+- EVM related ones use etherjs and are floored on numerics on bigints. This
+  should be switched to big decimal calc later.

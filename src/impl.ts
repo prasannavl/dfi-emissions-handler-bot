@@ -326,7 +326,7 @@ export async function distributeDusdToContracts(
     evmDusdDiff - BigInt(Math.floor(Amount.fromUnit(dUsdToTransfer).wei()) > 1)
   ) {
     console.log(
-      "DUSD mistmatch between transfer and init balance; manual verification required",
+      "DUSD mismatch between transfer and init balance; manual verification required",
     );
     console.log(
       `dUsdTransferred: ${dUsdToTransfer}; Diff in Contract: ${evmDusdDiff}`,
