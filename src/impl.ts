@@ -117,7 +117,7 @@ export async function createContext(
   const dfiPriceForDusd = poolPairInfoDusdDfi["reserveB/reserveA"];
   const dfiForDusdCappedPerBlock = dfiPriceForDusd * maxDUSDPerBlock;
   const dfiToSwapPerBlock = Math.min(
-    balanceTokensInitDfi,
+    Math.floor(balanceTokensInitDfi / diffBlocks),
     dfiForDusdCappedPerBlock,
   );
   const dfiToSwapForDiffBlocks = dfiToSwapPerBlock * diffBlocks;
@@ -447,25 +447,107 @@ export async function distributeDusdToContracts(
   const cxLocks1y = lockBotContract1y.connect(signer) as ethers.Contract;
   const cxLocks2y = lockBotContract2y.connect(signer) as ethers.Contract;
 
-  console.log(
-    `approve DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
-  );
-  await cxDusd.approve(evmAddr1, evmAddr1AmountInWei);
+  // Generate all EVM Txs in one-go to speed up the execute and wait process.
+  //
+  // Note it's best to generate at the same block height, or the calls that ethers
+  // singer will make to get the data for each tx could be different and fail.
 
-  console.log(
-    `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
-  );
-  await cxLocks1y.addRewards(evmAddr1AmountInWei);
+  const txDescriptors: TxDescriptor[] = [
+    {
+      label: "approve DUSD to contract 1",
+      gen: cxDusd.approve.populateTransaction,
+      args: [evmAddr1, evmAddr1AmountInWei],
+      v: null as ethers.ContractTransaction | null,
+    },
+    {
+      label: "approve DUSD to contract 2",
+      gen: cxDusd.approve.populateTransaction,
+      args: [evmAddr2, evmAddr2AmountInWei],
+      v: null,
+    },
+    {
+      label: "transfer DUSD to contract 1",
+      gen: cxLocks1y.addRewards.populateTransaction,
+      args: [evmAddr1AmountInWei],
+      v: null,
+    },
+    {
+      label: "transfer DUSD to contract 2",
+      gen: cxLocks2y.addRewards.populateTransaction,
+      args: [evmAddr2AmountInWei],
+      v: null,
+    },
+  ];
 
-  console.log(
-    `approve DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
-  );
-  await cxDusd.approve(evmAddr2, evmAddr2AmountInWei);
+  // We send the approvals in first.
+  // await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
+  // Then we send the TXs
+  // await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
 
-  console.log(
-    `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
-  );
-  await cxLocks2y.addRewards(evmAddr2AmountInWei);
+  // We send approvals and transfers in parallel, so we hard code the
+  // gas limit to reasonable value.
+  await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
+
+  // for (const txDesc of txDescriptors) {
+  //   console.log(
+  //     `${txDesc.label}: ${[...txDesc.args]}`,
+  //   );
+  //   const tx = await txDesc.gen(...txDesc.args);
+  //   tx.nonce = await evm.getTransactionCount(emissionsAddrErc55.value);
+  //   (await signer.sendTransaction(tx)).wait();
+  // }
 
   return true;
+}
+
+type TxDescriptor = {
+  label: string;
+  gen: (...args: any[]) => Promise<ethers.ContractTransaction>;
+  args: any[];
+  v: ethers.ContractTransaction | null;
+};
+
+async function sendTxsInParallel(
+  cli: DfiCli,
+  txDesc: TxDescriptor[],
+  signer: ethers.Signer,
+  gasLimit = 0n,
+) {
+  const txsForContractTransfer = await (async () => {
+    while (true) {
+      const currentHeight = await cli.getBlockHeight();
+      let i = 0;
+      const descCopy = [...txDesc];
+      for (const tx of descCopy) {
+        // Generate the txs
+        const txVal = await tx.gen(...tx.args);
+        // We update the nonce, since populateTransaction uses signer.getNonce
+        // which in turn uses getTransactionCount on the provider.
+        // Node as provider will always return the same count.
+        if (txVal.nonce != null) {
+          txVal.nonce += i++;
+        }
+        if (gasLimit > 0n) {
+          txVal.gasLimit = gasLimit;
+        }
+        tx.v = txVal;
+      }
+      if (currentHeight.value == (await cli.getBlockHeight()).value) {
+        return descCopy;
+      }
+      console.log("block height changed, retry generation of contract txs");
+    }
+  })();
+
+  const responses = txsForContractTransfer.map(async (tx) => {
+    console.log(
+      `${tx.label}: ${[...tx.args]}`,
+    );
+    const txResponse = await signer.sendTransaction(tx.v!);
+    console.log(`${tx.label}: wait for ${txResponse.hash}`);
+    await txResponse.wait();
+    console.log(`${tx.label}: done`);
+  });
+
+  await Promise.all(responses);
 }
