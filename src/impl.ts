@@ -311,11 +311,10 @@ export async function burnLeftOverDFI(
 
   // Just burn whatever is left off.
   const dfiBal = balanceTokensInitDfi - dfiToSwapForDiffBlocks;
-  
+
   // We retain fee reserve amount for each domain, just to be safe.
-  let amountToBurn = Math.max(0, dfiBal - (feeReserveAmount * 2));
-  // We reduce another. This takes cares of all floating point related errors.
-  amountToBurn -= 1;
+  // In addition, we reduce another. This takes cares of all floating point related errors.
+  const amountToBurn = Math.max(0, dfiBal - (feeReserveAmount * 2) - 1);
 
   if (amountToBurn <= 0) {
     console.log(`burn: skip due to low reserves: ${amountToBurn}`);
