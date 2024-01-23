@@ -154,7 +154,7 @@ export async function createContext(
         swapHeight: null as BlockHeight | null,
       },
       postSwapCalc: {
-        balanceTokens: null as GetTokenBalancesResponseDecoded | null,
+        balanceTokens: null as GetAccountIndexedResponse | null,
         balanceTokenDfi: null as number | null,
         balanceTokenDusd: null as number | null,
         dUsdToTransfer: null as number | null,
