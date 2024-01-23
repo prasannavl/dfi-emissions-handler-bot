@@ -117,7 +117,7 @@ export async function createContext(
   const dfiPriceForDusd = poolPairInfoDusdDfi["reserveB/reserveA"];
   const dfiForDusdCappedPerBlock = dfiPriceForDusd * maxDUSDPerBlock;
   const dfiToSwapPerBlock = Math.min(
-    balanceTokensInitDfi,
+    Math.floor(balanceTokensInitDfi / diffBlocks),
     dfiForDusdCappedPerBlock,
   );
   const dfiToSwapForDiffBlocks = dfiToSwapPerBlock * diffBlocks;
@@ -479,16 +479,16 @@ export async function distributeDusdToContracts(
     },
   ];
 
-  // await sendTxsInParallel(cli, txDescriptors, signer);
+  await sendTxsInParallel(cli, txDescriptors, signer);
 
-  for (const txDesc of txDescriptors) {
-    console.log(
-      `${txDesc.label}: ${[...txDesc.args]}`,
-    );
-    const tx = await txDesc.gen(...txDesc.args);
-    tx.nonce = await evm.getTransactionCount(emissionsAddrErc55.value);
-    (await signer.sendTransaction(tx)).wait();
-  }
+  // for (const txDesc of txDescriptors) {
+  //   console.log(
+  //     `${txDesc.label}: ${[...txDesc.args]}`,
+  //   );
+  //   const tx = await txDesc.gen(...txDesc.args);
+  //   tx.nonce = await evm.getTransactionCount(emissionsAddrErc55.value);
+  //   (await signer.sendTransaction(tx)).wait();
+  // }
 
   return true;
 }
