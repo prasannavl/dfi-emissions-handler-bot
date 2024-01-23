@@ -161,6 +161,12 @@ export interface GetAccountIndexedResponse {
   [keyof: string]: number;
 }
 
+export enum TokenResponseFormat {
+  List = 0,
+  IndexedAsTokenId = 1,
+  IndexedAsTokenName = 2,
+}
+
 export type GetTokenBalancesResponseArray = TokenAmount[];
 
 export interface GetTokenBalancesResponseDecoded {

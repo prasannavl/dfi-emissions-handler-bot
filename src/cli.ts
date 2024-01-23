@@ -35,6 +35,7 @@ import {
   GetTokenBalancesResponseDecoded,
   GetTokenResponse,
   GetTransactionResponse,
+  TokenResponseFormat,
 } from "./resp.ts";
 import { BurnTokensArgs } from "./req.ts";
 
@@ -232,17 +233,27 @@ export class DfiCli {
 
   async getAccount(
     args: Address,
-    useIndexedFormat = false,
+    format: TokenResponseFormat = TokenResponseFormat.List,
   ): Promise<GetAccountResponse> {
-    const res = await this.output("getaccount", args.value);
-    const resJson = res.json() as string[];
-    if (!useIndexedFormat) {
-      return resJson.map((x) =>
+    const cmdArgs = [args.value];
+    if (format != TokenResponseFormat.List) {
+      // Node does this. Just delegate
+      cmdArgs.push(
+        "{}",
+        format === TokenResponseFormat.IndexedAsTokenId ? "true" : "false",
+      );
+    }
+    const res = await this.output("getaccount", ...cmdArgs);
+    const resJson = res.json();
+    if (format === TokenResponseFormat.List) {
+      return (resJson as string[]).map((x) =>
         new TokenAmount(x)
       ) as GetAccountTokenAmountArrayResponse;
     }
-
-    return resJson.reduce((acc, cur) => {
+    if (format === TokenResponseFormat.IndexedAsTokenId) {
+      return resJson as GetAccountIndexedResponse;
+    }
+    return (resJson as string[]).reduce((acc, cur) => {
       const t = new TokenAmount(cur);
       acc[t.token()] = t.amount();
       return acc;

@@ -14,7 +14,7 @@ import {
   TransferDomainArgs,
   TransferDomainType,
 } from "./req.ts";
-import { GetTokenBalancesResponseDecoded } from "./resp.ts";
+import { GetAccountIndexedResponse, TokenResponseFormat } from "./resp.ts";
 import dst20Abi from "./data/DST20.abi.json" with { type: "json" };
 import lockBotAbi from "./data/DUSDBonds.abi.json" with { type: "json" };
 import { Amount } from "./common.ts";
@@ -100,10 +100,10 @@ export async function createContext(
   // Populate init data
   // We get initial balances as close together as possible.
   const balanceInitDfi = await cli.getBalance();
-  const balanceTokensInit = await cli.getTokenBalances(
-    true,
-    true,
-  ) as GetTokenBalancesResponseDecoded;
+  const balanceTokensInit = await cli.getAccount(
+    emissionsAddr,
+    TokenResponseFormat.IndexedAsTokenName,
+  ) as GetAccountIndexedResponse;
   const poolPairInfoDusdDfi = await cli.getPoolPair("DUSD-DFI");
   const balanceEvmInitDfi = await cli.evm()!.getBalance(emissionsAddrStrErc55);
   const balanceEvmInitDusd: bigint = await evmDusdContract.balanceOf(
@@ -283,13 +283,13 @@ export async function makePostSwapCalc(
   ctx: Awaited<ReturnType<typeof createContext>>,
 ) {
   // Get DUSD balance after swap
-  const { balanceTokensInitDusd, state } = ctx;
+  const { emissionsAddr, balanceTokensInitDusd, state } = ctx;
   const ss = state.postSwapCalc;
 
-  const tokenBalancesAfterSwap = await cli.getTokenBalances(
-    true,
-    true,
-  ) as GetTokenBalancesResponseDecoded;
+  const tokenBalancesAfterSwap = await cli.getAccount(
+    emissionsAddr,
+    TokenResponseFormat.IndexedAsTokenName,
+  ) as GetAccountIndexedResponse;
 
   const dusdTokenBalance = tokenBalancesAfterSwap["DUSD"] || 0;
   const dfiTokenBalance = tokenBalancesAfterSwap["DFI"] || 0;
@@ -305,17 +305,20 @@ export async function makePostSwapCalc(
 
 export async function burnLeftOverDFI(
   cli: DfiCli,
-  ctx: Awaited<ReturnType<typeof createContext>>
+  ctx: Awaited<ReturnType<typeof createContext>>,
 ) {
   const { emissionsAddr } = ctx;
   const { balanceTokenDfi } = ctx.state.postSwapCalc;
-  
+
   if (!balanceTokenDfi || balanceTokenDfi <= 0) {
     console.log("left over burn: no DFI left to burn, skip");
     return;
   }
 
-  await cli.burnTokens({from: emissionsAddr, amounts: TokenAmount.from(balanceTokenDfi, "DFI")});
+  await cli.burnTokens({
+    from: emissionsAddr,
+    amounts: TokenAmount.from(balanceTokenDfi, "DFI"),
+  });
 }
 
 export async function transferDomainDusdToErc55(
