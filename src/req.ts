@@ -93,6 +93,13 @@ export class AccountToAccountArgs {
   ) {}
 }
 
+export class BurnTokensArgs {
+  constructor(
+    public amounts: TokenAmount,
+    public from: Address,
+  ) {}
+}
+
 export class SendTokensToAddressArgs {
   public from: { [key: string]: string } = {};
   public to: { [key: string]: string } = {};

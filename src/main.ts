@@ -16,6 +16,7 @@ import {
 } from "./impl.ts";
 
 import { patchConsoleLogWithTime } from "./common.ts";
+import { burnLeftOverDFI } from "./impl.ts";
 
 // TODO:
 //  - Add burn into the mix
@@ -104,8 +105,6 @@ async function runEmissionSequence(
     await makePostSwapCalc(cli, ctx);
   });
 
-  // TODO: Add burn in the end to burn rest.
-
   chain.add(async () => {
     const res = await transferDomainDusdToErc55(cli, ctx);
     if (!res) {
@@ -117,6 +116,13 @@ async function runEmissionSequence(
     const res = await distributeDusdToContracts(cli, ctx);
     if (!res) {
       throw new Error("failed on distribute DUSD phase");
+    }
+  });
+
+  chain.add(async () => {
+    const res = await burnLeftOverDFI(cli, ctx);
+    if (!res) {
+      throw new Error("failed on burn leftover DFI");
     }
   });
 

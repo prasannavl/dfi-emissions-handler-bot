@@ -33,6 +33,7 @@ import {
   GetTokenResponse,
   GetTransactionResponse,
 } from "./resp.ts";
+import { BurnTokensArgs } from "./req.ts";
 
 export { ethers };
 
@@ -360,6 +361,15 @@ export class DfiCli {
       args.from.value,
       JSON.stringify({ [args.to.value]: args.amount.toString() }),
     );
+    return new TxHash(trimConsoleText(res));
+  }
+
+  async burnTokens(args: BurnTokensArgs) {
+    const res = await this.outputString(
+      "burntokens",
+      JSON.stringify({ "amounts": args.amounts.value, "from": args.from.value })
+    );
+
     return new TxHash(trimConsoleText(res));
   }
 
