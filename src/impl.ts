@@ -318,6 +318,7 @@ export async function burnLeftOverDFI(
 
   if (amountToBurn <= 0) {
     console.log(`burn: skip due to low reserves: ${amountToBurn}`);
+    return;
   }
 
   console.log(`burn DFI: ${amountToBurn}`);
