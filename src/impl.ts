@@ -523,6 +523,9 @@ async function sendTxsInParallel(
         if (txVal.nonce != null) {
           txVal.nonce += i++;
         }
+        //have to set gaslimit ourself, cause due to the "missing" approve onchain (its pending in the tx before), 
+        //the gasEstimate fails. We know the gas of approve and addRewards is below 100k, and tx is anyway only using what it needs.
+        txVal.gasLimit = ethers.BigNumber.from(100_000)
         tx.v = txVal;
       }
       if (currentHeight.value == (await cli.getBlockHeight()).value) {
