@@ -120,7 +120,10 @@ export async function createContext(
     balanceTokensInitDfi / diffBlocks,
     dfiForDusdCappedPerBlock,
   );
-  const dfiToSwapForDiffBlocks = Math.min(dfiToSwapPerBlock * diffBlocks, balanceTokensInitDfi);
+  const dfiToSwapForDiffBlocks = Math.min(
+    dfiToSwapPerBlock * diffBlocks,
+    balanceTokensInitDfi,
+  );
 
   return {
     initHeight: height,
@@ -216,13 +219,12 @@ export async function ensureFeeReserves(
 }
 
 export function initialSanityChecks(
-  cli: DfiCli,
+  _cli: DfiCli,
   ctx: Awaited<ReturnType<typeof createContext>>,
 ) {
   const {
     envOpts: { feeReserveAmount },
     balanceInitDfi,
-    balanceTokensInitDusd,
     dfiToSwapForDiffBlocks,
     state: { feeReserves: { balanceDfi } },
   } = ctx;
@@ -307,7 +309,12 @@ export async function burnLeftOverDFI(
   cli: DfiCli,
   ctx: Awaited<ReturnType<typeof createContext>>,
 ) {
-  const { emissionsAddr, balanceTokensInitDfi, dfiToSwapForDiffBlocks, envOpts: { feeReserveAmount } } = ctx;
+  const {
+    emissionsAddr,
+    balanceTokensInitDfi,
+    dfiToSwapForDiffBlocks,
+    envOpts: { feeReserveAmount },
+  } = ctx;
 
   // Just burn whatever is left off.
   const dfiBal = balanceTokensInitDfi - dfiToSwapForDiffBlocks;
@@ -482,20 +489,22 @@ export async function distributeDusdToContracts(
 
   // We send approvals and transfers in parallel, so we hard code the
   // gas limit to reasonable value.
-  
+
   await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
-  
+
   // The alternate way to do this: We send the approvals in first.
   // await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
   // Then we send the TXs
   // await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
-  
+
   return true;
 }
 
 type TxDescriptor = {
   label: string;
+  // deno-lint-ignore no-explicit-any
   gen: (...args: any[]) => Promise<ethers.ContractTransaction>;
+  // deno-lint-ignore no-explicit-any
   args: any[];
   v: ethers.ContractTransaction | null;
 };

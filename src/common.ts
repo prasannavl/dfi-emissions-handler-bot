@@ -61,6 +61,7 @@ export class TokenAmount extends ValueType<string> {
   }
 }
 
+// deno-lint-ignore no-explicit-any
 export function makeSerializable(args: any) {
   if (args instanceof ValueType) {
     return args.value;
@@ -72,6 +73,7 @@ export function makeSerializable(args: any) {
     return args.toFixed(8);
   }
 
+  // deno-lint-ignore no-explicit-any
   const res: any = {};
   for (const propName in args) {
     const prop = args[propName];

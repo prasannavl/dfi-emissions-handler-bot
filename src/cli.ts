@@ -186,7 +186,8 @@ export class DfiCli {
     const resJson = res.json();
     // We fix up the id so make life easier
     const id = Object.keys(resJson)[0];
-    let o = Object.values(resJson)[0] as any;
+    // deno-lint-ignore no-explicit-any
+    const o = Object.values(resJson)[0] as any;
     o["id"] = parseInt(id);
     return o as GetTokenResponse;
   }
@@ -196,7 +197,8 @@ export class DfiCli {
     const resJson = res.json();
     // We fix up the id so make life easier
     const id = Object.keys(resJson)[0];
-    let o = Object.values(resJson)[0] as any;
+    // deno-lint-ignore no-explicit-any
+    const o = Object.values(resJson)[0] as any;
     o["id"] = parseInt(id);
     return o as GetPoolPairResponse;
   }
@@ -289,6 +291,7 @@ export class DfiCli {
       args.value.toString(),
       verbosity.toString(),
     );
+    // deno-lint-ignore no-explicit-any
     const resJson = res.json() as any;
     switch (verbosity) {
       case 0:
@@ -337,7 +340,9 @@ export class DfiCli {
         )) as GetBlockResponseV1).height;
         log && writeText("\n");
         return new BlockHeight(height);
-      } catch (_) {}
+      } catch (_) {
+        // continue
+      }
       log && writeText(".");
       await this.waitForBlock();
     }
