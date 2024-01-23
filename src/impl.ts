@@ -479,24 +479,16 @@ export async function distributeDusdToContracts(
     },
   ];
 
-  // We send the approvals in first.
+  // We send approvals and transfers in parallel, so we hard code the
+  // gas limit to reasonable value.
+  
+  await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
+  
+  // The alternate way to do this: We send the approvals in first.
   // await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
   // Then we send the TXs
   // await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
-
-  // We send approvals and transfers in parallel, so we hard code the
-  // gas limit to reasonable value.
-  await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
-
-  // for (const txDesc of txDescriptors) {
-  //   console.log(
-  //     `${txDesc.label}: ${[...txDesc.args]}`,
-  //   );
-  //   const tx = await txDesc.gen(...txDesc.args);
-  //   tx.nonce = await evm.getTransactionCount(emissionsAddrErc55.value);
-  //   (await signer.sendTransaction(tx)).wait();
-  // }
-
+  
   return true;
 }
 
