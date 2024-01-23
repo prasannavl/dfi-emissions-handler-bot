@@ -460,17 +460,18 @@ export async function distributeDusdToContracts(
       v: null as ethers.ContractTransaction | null,
     },
     {
-      label: "transfer DUSD to contract 1",
-      gen: cxLocks1y.addRewards.populateTransaction,
-      args: [evmAddr1AmountInWei],
-      v: null,
-    },
-    {
       label: "approve DUSD to contract 2",
       gen: cxDusd.approve.populateTransaction,
       args: [evmAddr2, evmAddr2AmountInWei],
       v: null,
     },
+    {
+      label: "transfer DUSD to contract 1",
+      gen: cxLocks1y.addRewards.populateTransaction,
+      args: [evmAddr1AmountInWei],
+      v: null,
+    },
+
     {
       label: "transfer DUSD to contract 2",
       gen: cxLocks2y.addRewards.populateTransaction,
@@ -479,7 +480,10 @@ export async function distributeDusdToContracts(
     },
   ];
 
-  await sendTxsInParallel(cli, txDescriptors, signer);
+  // We send the approvals in first.
+  await sendTxsInParallel(cli, txDescriptors.slice(0, 1), signer);
+  // Then we send the TXs
+  await sendTxsInParallel(cli, txDescriptors.slice(2, 3), signer);
 
   // for (const txDesc of txDescriptors) {
   //   console.log(
