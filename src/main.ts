@@ -99,11 +99,11 @@ async function runEmissionSequence(
 
   chain.add(async () => {
     await swapDfiToDusd(cli, ctx);
-    await burnLeftOverDFI(cli, ctx);
   });
 
   chain.add(async () => {
     await makePostSwapCalc(cli, ctx);
+    await burnLeftOverDFI(cli, ctx);
   });
 
   chain.add(async () => {
