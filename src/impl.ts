@@ -320,10 +320,14 @@ export async function burnLeftOverDFI(
     console.log(`burn: skip due to low reserves: ${amountToBurn}`);
   }
 
-  await cli.burnTokens({
+  console.log(`burn DFI: ${amountToBurn}`);
+
+  const tx = await cli.burnTokens({
     from: emissionsAddr,
     amounts: TokenAmount.from(amountToBurn, "DFI"),
   });
+
+  await cli.waitForTx(tx);
 }
 
 export async function transferDomainDusdToErc55(
