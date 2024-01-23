@@ -303,6 +303,23 @@ export async function makePostSwapCalc(
   console.log(`DUSD increase on address: ${dUsdToTransfer}`);
 }
 
+export async function burnLeftOverDFI(
+  cli: DfiCli,
+  ctx: Awaited<ReturnType<typeof createContext>>
+) {
+  const { emissionsAddr } = ctx;
+  const { balanceTokenDfi } = ctx.state.postSwapCalc;
+  
+  if (!balanceTokenDfi || balanceTokenDfi <= 0) {
+    console.log("no DFI to burn");
+    return true;
+  }
+
+  cli.burnTokens({from: emissionsAddr, amounts: TokenAmount.from(balanceTokenDfi, "DFI")})
+
+  return true;
+}
+
 export async function transferDomainDusdToErc55(
   cli: DfiCli,
   ctx: Awaited<ReturnType<typeof createContext>>,
