@@ -417,21 +417,19 @@ export class DfiCli {
   }
 }
 
-export async function processRun(...args: string[]) {
-  return await (Deno.run({ cmd: [...args] }).status());
+export async function processRun(path: string, ...args: string[]) {
+  const cmd = new Deno.Command(path, { args });
+  const { status } = await cmd.spawn();
+  return await status;
 }
 
-export async function processOutput(...args: string[]) {
-  const p = Deno.run({
-    cmd: [...args],
-    stdout: "piped",
-    stderr: "piped",
-  });
-  const result = await p.status();
-  if (result.code != 0) {
-    throw new Error(new TextDecoder().decode(await p.stderrOutput()));
+export async function processOutput(path: string, ...args: string[]) {
+  const cmd = new Deno.Command(path, { args, stdout: "piped", stderr: "piped" });
+  const { code, success, stdout, stderr } = await cmd.output();
+  if (!success) {
+    throw new Error(`process code: ${code}, ${new TextDecoder().decode(stderr)}`);
   }
-  return new Output(new TextDecoder().decode(await p.output()));
+  return new Output(new TextDecoder().decode(stdout));
 }
 
 export class Output {
