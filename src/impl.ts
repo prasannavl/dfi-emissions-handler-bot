@@ -217,12 +217,15 @@ export function initialSanityChecks(
 ) {
   const {
     envOpts: { feeReserveAmount },
+    balanceInitDfi,
     balanceTokensInitDusd,
     dfiToSwapForDiffBlocks,
     state: { feeReserves: { balanceDfi } },
   } = ctx;
   // Sanity checks
-  const dfiTokenBalance = balanceDfi || 0;
+  
+  // If fee reserve balance is null, it never ran it.
+  const dfiTokenBalance = (balanceDfi == null ? balanceInitDfi : balanceDfi) || 0;
   if (dfiTokenBalance < feeReserveAmount) {
     console.log("DFI token balances too low. skipping");
     return false;
