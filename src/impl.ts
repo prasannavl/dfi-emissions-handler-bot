@@ -481,9 +481,9 @@ export async function distributeDusdToContracts(
   ];
 
   // We send the approvals in first.
-  await sendTxsInParallel(cli, txDescriptors.slice(0, 1), signer);
+  await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
   // Then we send the TXs
-  await sendTxsInParallel(cli, txDescriptors.slice(2, 3), signer);
+  await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
 
   // for (const txDesc of txDescriptors) {
   //   console.log(
