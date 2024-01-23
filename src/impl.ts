@@ -311,13 +311,11 @@ export async function burnLeftOverDFI(
   const { balanceTokenDfi } = ctx.state.postSwapCalc;
   
   if (!balanceTokenDfi || balanceTokenDfi <= 0) {
-    console.log("no DFI to burn");
-    return true;
+    console.log("left over burn: no DFI left to burn, skip");
+    return;
   }
 
-  cli.burnTokens({from: emissionsAddr, amounts: TokenAmount.from(balanceTokenDfi, "DFI")})
-
-  return true;
+  await cli.burnTokens({from: emissionsAddr, amounts: TokenAmount.from(balanceTokenDfi, "DFI")});
 }
 
 export async function transferDomainDusdToErc55(

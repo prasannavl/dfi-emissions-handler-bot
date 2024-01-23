@@ -99,6 +99,7 @@ async function runEmissionSequence(
 
   chain.add(async () => {
     await swapDfiToDusd(cli, ctx);
+    await burnLeftOverDFI(cli, ctx);
   });
 
   chain.add(async () => {
@@ -116,13 +117,6 @@ async function runEmissionSequence(
     const res = await distributeDusdToContracts(cli, ctx);
     if (!res) {
       throw new Error("failed on distribute DUSD phase");
-    }
-  });
-
-  chain.add(async () => {
-    const res = await burnLeftOverDFI(cli, ctx);
-    if (!res) {
-      throw new Error("failed on burn leftover DFI");
     }
   });
 
