@@ -307,17 +307,22 @@ export async function burnLeftOverDFI(
   cli: DfiCli,
   ctx: Awaited<ReturnType<typeof createContext>>,
 ) {
-  const { emissionsAddr } = ctx;
+  const { emissionsAddr, envOpts: { feeReserveAmount } } = ctx;
   const { balanceTokenDfi } = ctx.state.postSwapCalc;
-
-  if (!balanceTokenDfi || balanceTokenDfi <= 0) {
-    console.log("left over burn: no DFI left to burn, skip");
-    return;
+  
+  const dfiBal =  balanceTokenDfi || 0;
+  // We retain fee reserve amount for each domain, just to be safe.
+  let amountToBurn = Math.max(0, dfiBal - (feeReserveAmount * 2));
+  // We reduce another. This takes cares of all floating point related errors.
+  amountToBurn -= 1;
+  
+  if (amountToBurn <= 0) {
+    console.log(`burn: skip due to low reserves: ${amountToBurn}`);
   }
 
   await cli.burnTokens({
     from: emissionsAddr,
-    amounts: TokenAmount.from(balanceTokenDfi, "DFI"),
+    amounts: TokenAmount.from(amountToBurn, "DFI"),
   });
 }
 
