@@ -103,7 +103,8 @@ async function runEmissionSequence(
 
   chain.add(async () => {
     await makePostSwapCalc(cli, ctx);
-    await burnLeftOverDFI(cli, ctx);
+    // TODO: Enable after switching to getaccount
+    // await burnLeftOverDFI(cli, ctx);
   });
 
   chain.add(async () => {

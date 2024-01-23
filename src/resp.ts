@@ -152,6 +152,15 @@ export type GetTokenBalancesResponse =
   | GetTokenBalancesResponseArray
   | GetTokenBalancesResponseDecoded;
 
+export type GetAccountResponse =
+  | GetAccountTokenAmountArrayResponse
+  | GetAccountIndexedResponse;
+
+export type GetAccountTokenAmountArrayResponse = TokenAmount[];
+export interface GetAccountIndexedResponse {
+  [keyof: string]: number;
+}
+
 export type GetTokenBalancesResponseArray = TokenAmount[];
 
 export interface GetTokenBalancesResponseDecoded {

@@ -22,6 +22,9 @@ import {
 } from "./req.ts";
 import {
   AddressMapResponse,
+  GetAccountIndexedResponse,
+  GetAccountResponse,
+  GetAccountTokenAmountArrayResponse,
   GetBlockResponse,
   GetBlockResponseV0,
   GetBlockResponseV1,
@@ -227,10 +230,23 @@ export class DfiCli {
     return new TxHash(trimConsoleText(res));
   }
 
-  async getAccount(args: Address) {
+  async getAccount(
+    args: Address,
+    useIndexedFormat = false,
+  ): Promise<GetAccountResponse> {
     const res = await this.output("getaccount", args.value);
     const resJson = res.json() as string[];
-    return resJson.map((x) => new TokenAmount(x));
+    if (!useIndexedFormat) {
+      return resJson.map((x) =>
+        new TokenAmount(x)
+      ) as GetAccountTokenAmountArrayResponse;
+    }
+
+    return resJson.reduce((acc, cur) => {
+      const t = new TokenAmount(cur);
+      acc[t.token()] = t.amount();
+      return acc;
+    }, {} as GetAccountIndexedResponse) as GetAccountIndexedResponse;
   }
 
   async ethGetBalance(args: Address) {
@@ -367,7 +383,10 @@ export class DfiCli {
   async burnTokens(args: BurnTokensArgs) {
     const res = await this.outputString(
       "burntokens",
-      JSON.stringify({ "amounts": args.amounts.value, "from": args.from.value })
+      JSON.stringify({
+        "amounts": args.amounts.value,
+        "from": args.from.value,
+      }),
     );
 
     return new TxHash(trimConsoleText(res));
