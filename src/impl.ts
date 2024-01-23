@@ -169,8 +169,12 @@ export async function ensureFeeReserves(
 ) {
   // Refill utxo from tokens if needed before we start anything
   // Needed for fees in DVM
-  const { envOpts: { feeReserveAmount }, state, balanceInitDfi, emissionsAddr } =
-    ctx;
+  const {
+    envOpts: { feeReserveAmount },
+    state,
+    balanceInitDfi,
+    emissionsAddr,
+  } = ctx;
   const ss = state.feeReserves;
 
   if (balanceInitDfi < feeReserveAmount) {
@@ -223,9 +227,10 @@ export function initialSanityChecks(
     state: { feeReserves: { balanceDfi } },
   } = ctx;
   // Sanity checks
-  
+
   // If fee reserve balance is null, it never ran it.
-  const dfiTokenBalance = (balanceDfi == null ? balanceInitDfi : balanceDfi) || 0;
+  const dfiTokenBalance = (balanceDfi == null ? balanceInitDfi : balanceDfi) ||
+    0;
   if (dfiTokenBalance < feeReserveAmount) {
     console.log("DFI token balances too low. skipping");
     return false;
@@ -291,7 +296,7 @@ export async function makePostSwapCalc(
   const dUsdToTransfer = dusdTokenBalance - balanceTokensInitDusd;
 
   ss.balanceTokens = tokenBalancesAfterSwap;
-  ss.balanceTokenDfi =  dfiTokenBalance;
+  ss.balanceTokenDfi = dfiTokenBalance;
   ss.balanceTokenDusd = dusdTokenBalance;
   ss.dUsdToTransfer = dUsdToTransfer;
 
@@ -358,7 +363,8 @@ export async function distributeDusdToContracts(
   // Due to the nature of floats, the last sat can still fall in either place
   // so, we ignore 1 sat diff.
   if (
-    evmDusdDiff / BigInt(1e10) - Amount.fromUnit(dUsdToTransfer).satsAsBigInt() > 1
+    evmDusdDiff / BigInt(1e10) -
+        Amount.fromUnit(dUsdToTransfer).satsAsBigInt() > 1
   ) {
     console.log(
       "DUSD mismatch between transfer and init balance; manual verification required",
@@ -414,25 +420,70 @@ export async function distributeDusdToContracts(
   const cxLocks1y = lockBotContract1y.connect(signer) as ethers.Contract;
   const cxLocks2y = lockBotContract2y.connect(signer) as ethers.Contract;
 
-  console.log(
-    `approve DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
-  );
-  await cxDusd.approve(evmAddr1, evmAddr1AmountInWei);
+  // Generate all EVM Txs in one-go to speed up the execute and wait process.
+  //
+  // Note it's best to generate at the same block height, or the calls that ethers
+  // singer will make to get the data for each tx could be different and fail.
+  const txsForContractTransfer = await (async () => {
+    while (true) {
+      const currentHeight = await cli.getBlockHeight();
+      const txs = [
+        {
+          label: "approve DUSD to contract 1",
+          gen: cxDusd.approve.populateTransaction, 
+          args: [ evmAddr1, evmAddr1AmountInWei ],
+          v: null as ethers.ContractTransaction | null,
+        },
+        {
+          label: "transfer DUSD to contract 1",
+          gen: cxLocks1y.addRewards.populateTransaction,
+          args: [ evmAddr1AmountInWei ],
+          v: null,
+        },
+        {
+          label: "approve DUSD to contract 2",
+          gen: cxDusd.approve.populateTransaction,
+          args: [ evmAddr2, evmAddr2AmountInWei ],
+          v: null,
+        },
+        {
+          label: "transfer DUSD to contract 2",
+          gen: cxLocks2y.addRewards.populateTransaction,
+          args: [ evmAddr2AmountInWei ],
+          v: null,
+        },
+      ];
 
-  console.log(
-    `transfer DUSD to contract 1: ${evmAddr1}: ${evmAddr1AmountInWei}`,
-  );
-  await cxLocks1y.addRewards(evmAddr1AmountInWei);
+      let i = 0; 
+      for (const tx of txs) {
+      // Generate the txs
+        tx.v = await tx.gen(...tx.args);
+        // We update the nonce, since populateTransaction uses signer.getNonce
+        // which in turn uses getTransactionCount on the provider.
+        // Node as provider will always return the same count.
+        if (tx.v.nonce != null) {
+          tx.v.nonce += i++;
+        }
+      };
 
-  console.log(
-    `approve DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
-  );
-  await cxDusd.approve(evmAddr2, evmAddr2AmountInWei);
+      if (currentHeight.value == (await cli.getBlockHeight()).value) {
+        return txs;
+      }
+      console.log("block height changed, retry generation of contract txs");
+    }
+  })();
 
-  console.log(
-    `transfer DUSD to contract 2: ${evmAddr2}: ${evmAddr2AmountInWei}`,
-  );
-  await cxLocks2y.addRewards(evmAddr2AmountInWei);
+  const responses = txsForContractTransfer.map(async (tx) => {
+    console.log(
+      `${tx.label}: ${[...tx.args]}`,
+    );
+    const txResponse = await signer.sendTransaction(tx.v!);
+    console.log(`${tx.label}: wait for ${txResponse.hash}`);
+    await txResponse.wait();
+    console.log(`${tx.label}: done`);
+  });
+
+  await Promise.all(responses);
 
   return true;
 }

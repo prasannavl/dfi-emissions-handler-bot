@@ -424,10 +424,16 @@ export async function processRun(path: string, ...args: string[]) {
 }
 
 export async function processOutput(path: string, ...args: string[]) {
-  const cmd = new Deno.Command(path, { args, stdout: "piped", stderr: "piped" });
+  const cmd = new Deno.Command(path, {
+    args,
+    stdout: "piped",
+    stderr: "piped",
+  });
   const { code, success, stdout, stderr } = await cmd.output();
   if (!success) {
-    throw new Error(`process code: ${code}, ${new TextDecoder().decode(stderr)}`);
+    throw new Error(
+      `process code: ${code}, ${new TextDecoder().decode(stderr)}`,
+    );
   }
   return new Output(new TextDecoder().decode(stdout));
 }
