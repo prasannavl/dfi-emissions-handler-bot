@@ -484,7 +484,7 @@ export async function distributeDusdToContracts(
   // Then we send the TXs
   // await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
 
-  // We send approvals and transfers in parallel, so we hard code the 
+  // We send approvals and transfers in parallel, so we hard code the
   // gas limit to reasonable value.
   await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
 
@@ -511,7 +511,7 @@ async function sendTxsInParallel(
   cli: DfiCli,
   txDesc: TxDescriptor[],
   signer: ethers.Signer,
-  gasLimit = 0n, 
+  gasLimit = 0n,
 ) {
   const txsForContractTransfer = await (async () => {
     while (true) {
@@ -528,7 +528,7 @@ async function sendTxsInParallel(
           txVal.nonce += i++;
         }
         if (gasLimit > 0n) {
-          txVal.gasLimit = gasLimit;          
+          txVal.gasLimit = gasLimit;
         }
         tx.v = txVal;
       }
