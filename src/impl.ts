@@ -480,9 +480,13 @@ export async function distributeDusdToContracts(
   ];
 
   // We send the approvals in first.
-  await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
+  // await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
   // Then we send the TXs
-  await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
+  // await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
+
+  // We send approvals and transfers in parallel, so we hard code the 
+  // gas limit to reasonable value.
+  await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
 
   // for (const txDesc of txDescriptors) {
   //   console.log(
@@ -507,6 +511,7 @@ async function sendTxsInParallel(
   cli: DfiCli,
   txDesc: TxDescriptor[],
   signer: ethers.Signer,
+  gasLimit = 0n, 
 ) {
   const txsForContractTransfer = await (async () => {
     while (true) {
@@ -522,9 +527,9 @@ async function sendTxsInParallel(
         if (txVal.nonce != null) {
           txVal.nonce += i++;
         }
-        //have to set gaslimit ourself, cause due to the "missing" approve onchain (its pending in the tx before), 
-        //the gasEstimate fails. We know the gas of approve and addRewards is below 100k, and tx is anyway only using what it needs.
-        txVal.gasLimit = ethers.BigNumber.from(100_000)
+        if (gasLimit > 0n) {
+          txVal.gasLimit = gasLimit;          
+        }
         tx.v = txVal;
       }
       if (currentHeight.value == (await cli.getBlockHeight()).value) {
