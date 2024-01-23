@@ -169,8 +169,12 @@ export async function ensureFeeReserves(
 ) {
   // Refill utxo from tokens if needed before we start anything
   // Needed for fees in DVM
-  const { envOpts: { feeReserveAmount }, state, balanceInitDfi, emissionsAddr } =
-    ctx;
+  const {
+    envOpts: { feeReserveAmount },
+    state,
+    balanceInitDfi,
+    emissionsAddr,
+  } = ctx;
   const ss = state.feeReserves;
 
   if (balanceInitDfi < feeReserveAmount) {
@@ -223,9 +227,10 @@ export function initialSanityChecks(
     state: { feeReserves: { balanceDfi } },
   } = ctx;
   // Sanity checks
-  
+
   // If fee reserve balance is null, it never ran it.
-  const dfiTokenBalance = (balanceDfi == null ? balanceInitDfi : balanceDfi) || 0;
+  const dfiTokenBalance = (balanceDfi == null ? balanceInitDfi : balanceDfi) ||
+    0;
   if (dfiTokenBalance < feeReserveAmount) {
     console.log("DFI token balances too low. skipping");
     return false;
@@ -291,7 +296,7 @@ export async function makePostSwapCalc(
   const dUsdToTransfer = dusdTokenBalance - balanceTokensInitDusd;
 
   ss.balanceTokens = tokenBalancesAfterSwap;
-  ss.balanceTokenDfi =  dfiTokenBalance;
+  ss.balanceTokenDfi = dfiTokenBalance;
   ss.balanceTokenDusd = dusdTokenBalance;
   ss.dUsdToTransfer = dUsdToTransfer;
 
@@ -358,7 +363,8 @@ export async function distributeDusdToContracts(
   // Due to the nature of floats, the last sat can still fall in either place
   // so, we ignore 1 sat diff.
   if (
-    evmDusdDiff / BigInt(1e10) - Amount.fromUnit(dUsdToTransfer).satsAsBigInt() > 1
+    evmDusdDiff / BigInt(1e10) -
+        Amount.fromUnit(dUsdToTransfer).satsAsBigInt() > 1
   ) {
     console.log(
       "DUSD mismatch between transfer and init balance; manual verification required",
