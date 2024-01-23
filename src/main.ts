@@ -5,6 +5,7 @@ import { DfiCli, ethers } from "./cli.ts";
 import { BlockHeight } from "./common.ts";
 import { EnvOpts, loadEnvOptions } from "./opts.ts";
 import {
+  burnLeftOverDFI,
   ChainSteps,
   createContext,
   distributeDusdToContracts,
@@ -15,16 +16,10 @@ import {
   transferDomainDusdToErc55,
 } from "./impl.ts";
 
-import { patchConsoleLogWithTime } from "./common.ts";
-import { burnLeftOverDFI } from "./impl.ts";
-
-// TODO:
-//  - Add burn into the mix
-//  - Cleanup remaining floating point ops and switch to bigint
-//  - Switch to getaccount instead of gettokenbalances to be more specific
+import { initTimedLogger } from "./common.ts";
 
 async function main() {
-  patchConsoleLogWithTime();
+  initTimedLogger();
   const cli = new DfiCli(null, "-testnet");
   console.log(`cli: ${cli.path} ${cli.args.join(" ")}`);
 

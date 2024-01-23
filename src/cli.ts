@@ -22,6 +22,9 @@ import {
 } from "./req.ts";
 import {
   AddressMapResponse,
+  GetAccountIndexedResponse,
+  GetAccountResponse,
+  GetAccountTokenAmountArrayResponse,
   GetBlockResponse,
   GetBlockResponseV0,
   GetBlockResponseV1,
@@ -32,6 +35,7 @@ import {
   GetTokenBalancesResponseDecoded,
   GetTokenResponse,
   GetTransactionResponse,
+  TokenResponseFormat,
 } from "./resp.ts";
 import { BurnTokensArgs } from "./req.ts";
 
@@ -227,10 +231,33 @@ export class DfiCli {
     return new TxHash(trimConsoleText(res));
   }
 
-  async getAccount(args: Address) {
-    const res = await this.output("getaccount", args.value);
-    const resJson = res.json() as string[];
-    return resJson.map((x) => new TokenAmount(x));
+  async getAccount(
+    args: Address,
+    format: TokenResponseFormat = TokenResponseFormat.List,
+  ): Promise<GetAccountResponse> {
+    const cmdArgs = [args.value];
+    if (format != TokenResponseFormat.List) {
+      // Node does this. Just delegate
+      cmdArgs.push(
+        "{}",
+        format === TokenResponseFormat.IndexedAsTokenId ? "true" : "false",
+      );
+    }
+    const res = await this.output("getaccount", ...cmdArgs);
+    const resJson = res.json();
+    if (format === TokenResponseFormat.List) {
+      return (resJson as string[]).map((x) =>
+        new TokenAmount(x)
+      ) as GetAccountTokenAmountArrayResponse;
+    }
+    if (format === TokenResponseFormat.IndexedAsTokenId) {
+      return resJson as GetAccountIndexedResponse;
+    }
+    return (resJson as string[]).reduce((acc, cur) => {
+      const t = new TokenAmount(cur);
+      acc[t.token()] = t.amount();
+      return acc;
+    }, {} as GetAccountIndexedResponse) as GetAccountIndexedResponse;
   }
 
   async ethGetBalance(args: Address) {
@@ -367,7 +394,10 @@ export class DfiCli {
   async burnTokens(args: BurnTokensArgs) {
     const res = await this.outputString(
       "burntokens",
-      JSON.stringify({ "amounts": args.amounts.value, "from": args.from.value })
+      JSON.stringify({
+        "amounts": args.amounts.value,
+        "from": args.from.value,
+      }),
     );
 
     return new TxHash(trimConsoleText(res));

@@ -29,19 +29,16 @@ DFI emissions handler bot
   - `ethers` is also re-exported from `cli.ts` - so that you use the same
     version and mixed version conflicts.
   - Use the re-exported ethers for interacting with the EVM.
-- Note: DO NOT use this for use-cases other than the intended ones just yet.
-- The bot uses double precision floating point for many ops, which will quickly
+- Note: Use the cli driver for use-cases wider than the intended ones
+  with heavy caution.
+- It uses double precision floating point for many ops, which will quickly
   result in loss of precision and start approximating.
 - It's OK-ish for the intended use case of the bot for now. But this is a TODO.
 - Once shifted to native BigInt and arbitrary decimals, then it can be used as
   much simpler framework for other things.
 - Some eth* calls are baked in for quick testing only. Prefer ethers js instead
   to avoid precision loss.
-
-## TODOs
-
-- Remove the use of floats for amount.
-- Note: It's used in areas where we pass to DFI / BTC CLI. This doesn't accept
+- Note: Floats are used in areas where we pass to DFI / BTC CLI. This doesn't accept
   beyond 8 decimal precision and will throw an error anyway if `toFixed(8)`
   can't represent this. Why it's safe-ish.
 - Currently the used methods for the bot serialize them with `toFixed(8)` as

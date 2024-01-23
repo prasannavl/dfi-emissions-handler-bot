@@ -14,7 +14,7 @@ import {
   TransferDomainArgs,
   TransferDomainType,
 } from "./req.ts";
-import { GetTokenBalancesResponseDecoded } from "./resp.ts";
+import { GetAccountIndexedResponse, TokenResponseFormat } from "./resp.ts";
 import dst20Abi from "./data/DST20.abi.json" with { type: "json" };
 import lockBotAbi from "./data/DUSDBonds.abi.json" with { type: "json" };
 import { Amount } from "./common.ts";
@@ -100,10 +100,10 @@ export async function createContext(
   // Populate init data
   // We get initial balances as close together as possible.
   const balanceInitDfi = await cli.getBalance();
-  const balanceTokensInit = await cli.getTokenBalances(
-    true,
-    true,
-  ) as GetTokenBalancesResponseDecoded;
+  const balanceTokensInit = await cli.getAccount(
+    emissionsAddr,
+    TokenResponseFormat.IndexedAsTokenName,
+  ) as GetAccountIndexedResponse;
   const poolPairInfoDusdDfi = await cli.getPoolPair("DUSD-DFI");
   const balanceEvmInitDfi = await cli.evm()!.getBalance(emissionsAddrStrErc55);
   const balanceEvmInitDusd: bigint = await evmDusdContract.balanceOf(
@@ -154,7 +154,7 @@ export async function createContext(
         swapHeight: null as BlockHeight | null,
       },
       postSwapCalc: {
-        balanceTokens: null as GetTokenBalancesResponseDecoded | null,
+        balanceTokens: null as GetAccountIndexedResponse | null,
         balanceTokenDfi: null as number | null,
         balanceTokenDusd: null as number | null,
         dUsdToTransfer: null as number | null,
@@ -283,13 +283,13 @@ export async function makePostSwapCalc(
   ctx: Awaited<ReturnType<typeof createContext>>,
 ) {
   // Get DUSD balance after swap
-  const { balanceTokensInitDusd, state } = ctx;
+  const { emissionsAddr, balanceTokensInitDusd, state } = ctx;
   const ss = state.postSwapCalc;
 
-  const tokenBalancesAfterSwap = await cli.getTokenBalances(
-    true,
-    true,
-  ) as GetTokenBalancesResponseDecoded;
+  const tokenBalancesAfterSwap = await cli.getAccount(
+    emissionsAddr,
+    TokenResponseFormat.IndexedAsTokenName,
+  ) as GetAccountIndexedResponse;
 
   const dusdTokenBalance = tokenBalancesAfterSwap["DUSD"] || 0;
   const dfiTokenBalance = tokenBalancesAfterSwap["DFI"] || 0;
@@ -305,17 +305,29 @@ export async function makePostSwapCalc(
 
 export async function burnLeftOverDFI(
   cli: DfiCli,
-  ctx: Awaited<ReturnType<typeof createContext>>
+  ctx: Awaited<ReturnType<typeof createContext>>,
 ) {
-  const { emissionsAddr } = ctx;
+  const { emissionsAddr, envOpts: { feeReserveAmount } } = ctx;
   const { balanceTokenDfi } = ctx.state.postSwapCalc;
-  
-  if (!balanceTokenDfi || balanceTokenDfi <= 0) {
-    console.log("left over burn: no DFI left to burn, skip");
-    return;
+
+  const dfiBal = balanceTokenDfi || 0;
+  // We retain fee reserve amount for each domain, just to be safe.
+  let amountToBurn = Math.max(0, dfiBal - (feeReserveAmount * 2));
+  // We reduce another. This takes cares of all floating point related errors.
+  amountToBurn -= 1;
+
+  if (amountToBurn <= 0) {
+    console.log(`burn: skip due to low reserves: ${amountToBurn}`);
   }
 
-  await cli.burnTokens({from: emissionsAddr, amounts: TokenAmount.from(balanceTokenDfi, "DFI")});
+  console.log(`burn DFI: ${amountToBurn}`);
+
+  const tx = await cli.burnTokens({
+    from: emissionsAddr,
+    amounts: TokenAmount.from(amountToBurn, "DFI"),
+  });
+
+  await cli.waitForTx(tx);
 }
 
 export async function transferDomainDusdToErc55(

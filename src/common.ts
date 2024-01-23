@@ -158,7 +158,7 @@ export function dst20TokenIdToAddress(tokenId: number): Address {
   return new Address(str);
 }
 
-export function patchConsoleLogWithTime() {
+export function initTimedLogger() {
   const origLog = console.log;
   Object.defineProperty(console, "log", {
     get: function () {
