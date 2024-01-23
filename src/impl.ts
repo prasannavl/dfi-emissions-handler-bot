@@ -117,10 +117,10 @@ export async function createContext(
   const dfiPriceForDusd = poolPairInfoDusdDfi["reserveB/reserveA"];
   const dfiForDusdCappedPerBlock = dfiPriceForDusd * maxDUSDPerBlock;
   const dfiToSwapPerBlock = Math.min(
-    Math.floor(balanceTokensInitDfi / diffBlocks),
+    balanceTokensInitDfi / diffBlocks,
     dfiForDusdCappedPerBlock,
   );
-  const dfiToSwapForDiffBlocks = dfiToSwapPerBlock * diffBlocks;
+  const dfiToSwapForDiffBlocks = Math.min(dfiToSwapPerBlock * diffBlocks, balanceTokensInitDfi);
 
   return {
     initHeight: height,
@@ -307,10 +307,11 @@ export async function burnLeftOverDFI(
   cli: DfiCli,
   ctx: Awaited<ReturnType<typeof createContext>>,
 ) {
-  const { emissionsAddr, envOpts: { feeReserveAmount } } = ctx;
-  const { balanceTokenDfi } = ctx.state.postSwapCalc;
+  const { emissionsAddr, balanceTokensInitDfi, dfiToSwapForDiffBlocks, envOpts: { feeReserveAmount } } = ctx;
 
-  const dfiBal = balanceTokenDfi || 0;
+  // Just burn whatever is left off.
+  const dfiBal = balanceTokensInitDfi - dfiToSwapForDiffBlocks;
+  
   // We retain fee reserve amount for each domain, just to be safe.
   let amountToBurn = Math.max(0, dfiBal - (feeReserveAmount * 2));
   // We reduce another. This takes cares of all floating point related errors.
