@@ -424,50 +424,51 @@ export async function distributeDusdToContracts(
   //
   // Note it's best to generate at the same block height, or the calls that ethers
   // singer will make to get the data for each tx could be different and fail.
+
+  const txDescriptors = [
+    {
+      label: "approve DUSD to contract 1",
+      gen: cxDusd.approve.populateTransaction, 
+      args: [ evmAddr1, evmAddr1AmountInWei ],
+      v: null as ethers.ContractTransaction | null,
+    },
+    {
+      label: "transfer DUSD to contract 1",
+      gen: cxLocks1y.addRewards.populateTransaction,
+      args: [ evmAddr1AmountInWei ],
+      v: null,
+    },
+    {
+      label: "approve DUSD to contract 2",
+      gen: cxDusd.approve.populateTransaction,
+      args: [ evmAddr2, evmAddr2AmountInWei ],
+      v: null,
+    },
+    {
+      label: "transfer DUSD to contract 2",
+      gen: cxLocks2y.addRewards.populateTransaction,
+      args: [ evmAddr2AmountInWei ],
+      v: null,
+    },
+  ];
+
   const txsForContractTransfer = await (async () => {
     while (true) {
       const currentHeight = await cli.getBlockHeight();
-      const txs = [
-        {
-          label: "approve DUSD to contract 1",
-          gen: cxDusd.approve.populateTransaction, 
-          args: [ evmAddr1, evmAddr1AmountInWei ],
-          v: null as ethers.ContractTransaction | null,
-        },
-        {
-          label: "transfer DUSD to contract 1",
-          gen: cxLocks1y.addRewards.populateTransaction,
-          args: [ evmAddr1AmountInWei ],
-          v: null,
-        },
-        {
-          label: "approve DUSD to contract 2",
-          gen: cxDusd.approve.populateTransaction,
-          args: [ evmAddr2, evmAddr2AmountInWei ],
-          v: null,
-        },
-        {
-          label: "transfer DUSD to contract 2",
-          gen: cxLocks2y.addRewards.populateTransaction,
-          args: [ evmAddr2AmountInWei ],
-          v: null,
-        },
-      ];
-
-      let i = 0; 
-      for (const tx of txs) {
+      let i = 0;
+      const descCopy = [...txDescriptors];
+      for (const tx of descCopy) {
       // Generate the txs
-        tx.v = await tx.gen(...tx.args);
-        // We update the nonce, since populateTransaction uses signer.getNonce
-        // which in turn uses getTransactionCount on the provider.
-        // Node as provider will always return the same count.
-        if (tx.v.nonce != null) {
-          tx.v.nonce += i++;
+        const txVal = await tx.gen(...tx.args);
+      // We update the nonce, since populateTransaction uses signer.getNonce
+      // which in turn uses getTransactionCount on the provider.
+      // Node as provider will always return the same count.
+        if (txVal.nonce != null) {
+          txVal.nonce += i++;
         }
       };
-
       if (currentHeight.value == (await cli.getBlockHeight()).value) {
-        return txs;
+        return descCopy;
       }
       console.log("block height changed, retry generation of contract txs");
     }
