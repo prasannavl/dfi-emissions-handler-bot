@@ -471,7 +471,6 @@ export async function distributeDusdToContracts(
       args: [evmAddr1AmountInWei],
       v: null,
     },
-
     {
       label: "transfer DUSD to contract 2",
       gen: cxLocks2y.addRewards.populateTransaction,
