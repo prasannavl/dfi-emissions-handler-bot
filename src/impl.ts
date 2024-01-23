@@ -466,6 +466,7 @@ export async function distributeDusdToContracts(
         if (txVal.nonce != null) {
           txVal.nonce += i++;
         }
+        tx.v = txVal;
       };
       if (currentHeight.value == (await cli.getBlockHeight()).value) {
         return descCopy;
