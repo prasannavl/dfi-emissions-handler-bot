@@ -99,7 +99,7 @@ export async function createContext(
 
   // Populate init data
   // We get initial balances as close together as possible.
-  const balanceInit = await cli.getBalance();
+  const balanceInitDfi = await cli.getBalance();
   const balanceTokensInit = await cli.getTokenBalances(
     true,
     true,
@@ -130,7 +130,7 @@ export async function createContext(
     evmAddr1: new Address(envOpts.evmAddr1),
     evmAddr2: new Address(envOpts.evmAddr2),
     envOpts,
-    balanceInit,
+    balanceInitDfi,
     balanceEvmInitDfi,
     balanceEvmInitDusd,
     balanceTokensInit,
@@ -147,13 +147,15 @@ export async function createContext(
     },
     state: {
       currentHeight: height,
-      balanceTokensDfi: balanceTokensInitDfi,
-      balanceEvmDfi: balanceEvmInitDfi,
+      feeReserves: {
+        balanceDfi: null as number | null,
+      },
       swapDfiToDusd: {
         swapHeight: null as BlockHeight | null,
       },
       postSwapCalc: {
         balanceTokens: null as GetTokenBalancesResponseDecoded | null,
+        balanceTokenDfi: null as number | null,
         balanceTokenDusd: null as number | null,
         dUsdToTransfer: null as number | null,
       },
@@ -167,18 +169,19 @@ export async function ensureFeeReserves(
 ) {
   // Refill utxo from tokens if needed before we start anything
   // Needed for fees in DVM
-  const { envOpts: { feeReserveAmount }, state, balanceInit, emissionsAddr } =
+  const { envOpts: { feeReserveAmount }, state, balanceInitDfi, emissionsAddr } =
     ctx;
+  const ss = state.feeReserves;
 
-  if (balanceInit < feeReserveAmount) {
+  if (balanceInitDfi < feeReserveAmount) {
     console.log(`refill utxo from account for: ${feeReserveAmount}`);
     const tx = await cli.accountToUtxos(
       new AccountToUtxosArgs(emissionsAddr, emissionsAddr, feeReserveAmount),
     );
     await cli.waitForTx(tx);
 
-    state.balanceTokensDfi -= feeReserveAmount;
     state.currentHeight = await cli.getBlockHeight();
+    ss.balanceDfi = await cli.getBalance();
   }
 
   // Refill EVM DFI from tokens if needed before we start anything
@@ -203,9 +206,8 @@ export async function ensureFeeReserves(
     );
     await cli.waitForTx(tx);
 
-    state.balanceTokensDfi -= feeReserveAmount;
-    state.balanceEvmDfi = await cli.evm()!.getBalance(emissionsAddrErc55.value);
     state.currentHeight = await cli.getBlockHeight();
+    ss.balanceDfi = await cli.getBalance();
   }
 }
 
@@ -217,10 +219,10 @@ export function initialSanityChecks(
     envOpts: { feeReserveAmount },
     balanceTokensInitDusd,
     dfiToSwapForDiffBlocks,
-    state: { balanceTokensDfi },
+    state: { feeReserves: { balanceDfi } },
   } = ctx;
   // Sanity checks
-  const dfiTokenBalance = balanceTokensDfi;
+  const dfiTokenBalance = balanceDfi || 0;
   if (dfiTokenBalance < feeReserveAmount) {
     console.log("DFI token balances too low. skipping");
     return false;
@@ -263,6 +265,7 @@ export async function swapDfiToDusd(
   const tx = await cli.poolSwap(
     new PoolSwapArgs(emissionsAddr, "DFI", "DUSD", dfiToSwapForDiffBlocks),
   );
+
   ss.swapHeight = await cli.waitForTx(tx);
   state.currentHeight = await cli.getBlockHeight();
 }
@@ -281,9 +284,11 @@ export async function makePostSwapCalc(
   ) as GetTokenBalancesResponseDecoded;
 
   const dusdTokenBalance = tokenBalancesAfterSwap["DUSD"] || 0;
+  const dfiTokenBalance = tokenBalancesAfterSwap["DFI"] || 0;
   const dUsdToTransfer = dusdTokenBalance - balanceTokensInitDusd;
 
   ss.balanceTokens = tokenBalancesAfterSwap;
+  ss.balanceTokenDfi =  dfiTokenBalance;
   ss.balanceTokenDusd = dusdTokenBalance;
   ss.dUsdToTransfer = dUsdToTransfer;
 
