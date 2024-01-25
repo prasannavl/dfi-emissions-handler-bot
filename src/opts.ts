@@ -21,7 +21,16 @@ export async function loadEnvOptions() {
     }
   }
 
-  await load({ export: true });
+  let envPath = ".env";
+  const envPathOverride = Deno.env.get("ENV");
+  if (envPathOverride && envPathOverride.length > 0) {
+    const fileExists = await Deno.stat(envPathOverride).then(() => true).catch(
+      () => false,
+    );
+    envPath = fileExists ? envPathOverride : `.env.${envPathOverride}`;
+  }
+
+  await load({ envPath: envPath, export: true });
 
   const opts = {
     evmJsonRpc: new Option("BOT_EVM_JSON_RPC", "", true, (v) => v),
@@ -40,14 +49,14 @@ export async function loadEnvOptions() {
       true,
       parseFloat,
     ),
-    runIntervalMod: new Option("BOT_RUN_INTERVAL_MOD", "2", false, parseInt),
+    runIntervalMod: new Option("BOT_RUN_INTERVAL_MOD", "", true, parseInt),
     forceStart: new Option(
       "BOT_FORCE_START",
       "false",
       false,
       (v) => v === "true" || v === "1",
     ),
-    startBlock: new Option("BOT_START_BLOCK", "1345367", false, parseInt),
+    startBlock: new Option("BOT_START_BLOCK", "", true, parseInt),
     endBlock: new Option(
       "BOT_END_BLOCK",
       "-1",
