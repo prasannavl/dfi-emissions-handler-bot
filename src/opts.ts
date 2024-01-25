@@ -24,7 +24,9 @@ export async function loadEnvOptions() {
   let envPath = ".env";
   const envPathOverride = Deno.env.get("ENV");
   if (envPathOverride && envPathOverride.length > 0) {
-    const fileExists = await Deno.stat(envPathOverride).then(() => true).catch(() => false);
+    const fileExists = await Deno.stat(envPathOverride).then(() => true).catch(
+      () => false,
+    );
     envPath = fileExists ? envPathOverride : `.env.${envPathOverride}`;
   }
 
