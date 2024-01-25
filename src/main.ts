@@ -20,7 +20,7 @@ import { initTimedLogger } from "./common.ts";
 
 async function main() {
   initTimedLogger();
-  const cli = new DfiCli(null, "-testnet");
+  const cli = new DfiCli();
   console.log(`cli: ${cli.path} ${cli.args.join(" ")}`);
 
   const kv = await Deno.openKv(".state");
