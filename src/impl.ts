@@ -497,16 +497,16 @@ export async function distributeDusdToContracts(
   //
   // await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
 
-  // Remove all parallel TXs just to be safe. 
+  // Remove all parallel TXs just to be safe.
   // https://github.com/prasannavl/dfi-emissions-handler-bot/issues/9#issuecomment-1910501463
   // TODO: Don't use method for now. Better to use getTransactionCount
-  // 
+  //
   // The alternate way to do this: We send the approvals in first.
   // await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
   // Then we send the TXs
   // await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
 
- for (const txDesc of txDescriptors) {
+  for (const txDesc of txDescriptors) {
     console.log(
       `${txDesc.label}: ${[...txDesc.args]}`,
     );
@@ -526,7 +526,6 @@ type TxDescriptor = {
   args: any[];
   v: ethers.ContractTransaction | null;
 };
-
 
 // https://github.com/prasannavl/dfi-emissions-handler-bot/issues/9#issuecomment-1910501463
 async function sendTxsInParallel(
