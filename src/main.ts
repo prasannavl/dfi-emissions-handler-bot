@@ -19,7 +19,11 @@ import {
 import { initTimedLogger } from "./common.ts";
 
 async function main() {
+  const envOpts = await loadEnvOptions();  
   initTimedLogger();
+
+  console.log(envOpts);
+
   const cli = new DfiCli();
   console.log(`cli: ${cli.path} ${cli.args.join(" ")}`);
 
@@ -27,9 +31,6 @@ async function main() {
 
   let lastRunBlock = (await kv.get<number>(["lastRunBlock"]))?.value ?? 0;
   console.log(`lastRunBlock: ${lastRunBlock}`);
-
-  const envOpts = await loadEnvOptions();
-  console.log(envOpts);
 
   const { runIntervalMod, startBlock, endBlock, evmJsonRpc } = envOpts;
 
