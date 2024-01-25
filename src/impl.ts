@@ -492,9 +492,9 @@ export async function distributeDusdToContracts(
 
   // Note: https://github.com/prasannavl/dfi-emissions-handler-bot/issues/9
   // https://github.com/prasannavl/dfi-emissions-handler-bot/issues/3
-  // 
+  //
   // Disabled, regardless of relation, as it isn't really needed.
-  //  
+  //
   // await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
 
   // The alternate way to do this: We send the approvals in first.
