@@ -19,7 +19,7 @@ import {
 import { initTimedLogger } from "./common.ts";
 
 async function main() {
-  const envOpts = await loadEnvOptions();  
+  const envOpts = await loadEnvOptions();
   initTimedLogger();
 
   console.log(envOpts);
