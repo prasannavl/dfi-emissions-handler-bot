@@ -490,12 +490,17 @@ export async function distributeDusdToContracts(
   // We send approvals and transfers in parallel, so we hard code the
   // gas limit to reasonable value.
 
-  await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
+  // Note: https://github.com/prasannavl/dfi-emissions-handler-bot/issues/9
+  // https://github.com/prasannavl/dfi-emissions-handler-bot/issues/3
+  // 
+  // Disabled, regardless of relation, as it isn't really needed.
+  //  
+  // await sendTxsInParallel(cli, txDescriptors, signer, 100_000n);
 
   // The alternate way to do this: We send the approvals in first.
-  // await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
+  await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
   // Then we send the TXs
-  // await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
+  await sendTxsInParallel(cli, txDescriptors.slice(2, 4), signer);
 
   return true;
 }
