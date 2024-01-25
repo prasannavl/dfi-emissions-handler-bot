@@ -526,7 +526,6 @@ type TxDescriptor = {
   v: ethers.ContractTransaction | null;
 };
 
-// https://github.com/prasannavl/dfi-emissions-handler-bot/issues/9#issuecomment-1910501463
 async function sendTxsInParallel(
   cli: DfiCli,
   txDesc: TxDescriptor[],
@@ -537,8 +536,9 @@ async function sendTxsInParallel(
   const txsForContractTransfer = await (async () => {
     while (true) {
       const currentHeight = await cli.getBlockHeight();
+      // // https://github.com/prasannavl/dfi-emissions-handler-bot/issues/9#issuecomment-1910501463
       let i = await cli.evm()!.getTransactionCount(evmAddr.value);
-      ;
+
       const descCopy = [...txDesc];
       for (const tx of descCopy) {
         // Generate the txs
