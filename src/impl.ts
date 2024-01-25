@@ -499,7 +499,6 @@ export async function distributeDusdToContracts(
 
   // Remove all parallel TXs just to be safe.
   // https://github.com/prasannavl/dfi-emissions-handler-bot/issues/9#issuecomment-1910501463
-  // TODO: Don't use method for now. Better to use getTransactionCount
   //
   // The alternate way to do this: We send the approvals in first.
   // await sendTxsInParallel(cli, txDescriptors.slice(0, 2), signer);
@@ -532,12 +531,14 @@ async function sendTxsInParallel(
   cli: DfiCli,
   txDesc: TxDescriptor[],
   signer: ethers.Signer,
-  gasLimit = 0n,
+  evmAddr: Address,
+  gasLimit?: bigint,
 ) {
   const txsForContractTransfer = await (async () => {
     while (true) {
       const currentHeight = await cli.getBlockHeight();
-      let i = 0;
+      let i = await cli.evm()!.getTransactionCount(evmAddr.value);
+      ;
       const descCopy = [...txDesc];
       for (const tx of descCopy) {
         // Generate the txs
@@ -548,7 +549,7 @@ async function sendTxsInParallel(
         if (txVal.nonce != null) {
           txVal.nonce += i++;
         }
-        if (gasLimit > 0n) {
+        if (gasLimit != null) {
           txVal.gasLimit = gasLimit;
         }
         tx.v = txVal;
