@@ -526,7 +526,7 @@ type TxDescriptor = {
   v: ethers.ContractTransaction | null;
 };
 
-async function sendTxsInParallel(
+async function _sendTxsInParallel(
   cli: DfiCli,
   txDesc: TxDescriptor[],
   signer: ethers.Signer,
